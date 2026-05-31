@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/Skeleton'
 import {
   UploadCloud,
   FileText,
@@ -167,13 +168,13 @@ export default function ResumePage() {
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-[var(--success)] stroke-[var(--success)]'
+    if (score >= 85) return 'text-[var(--success)] stroke-emerald-500'
     if (score >= 70) return 'text-amber-400 stroke-amber-400'
     return 'text-red-400 stroke-red-400'
   }
 
   return (
-    <div className="fade-in-entry flex flex-col gap-6">
+    <div className="fade-in-entry flex flex-col gap-6 select-none">
       {/* Header Title */}
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-1.5">
@@ -187,7 +188,7 @@ export default function ResumePage() {
         {report && (
           <button
             onClick={() => setReport(null)}
-            className="px-3 py-1.5 rounded-lg border border-[var(--border-glass)] hover:bg-white/5 text-xs text-[var(--text-primary)] font-semibold cursor-pointer transition-all"
+            className="px-3.5 py-2 rounded-xl border border-[var(--border-glass)] hover:bg-white/5 text-xs text-[var(--text-primary)] font-bold cursor-pointer transition-all active:scale-95"
           >
             Scan New Resume
           </button>
@@ -224,8 +225,17 @@ export default function ResumePage() {
 
                 <div
                   onClick={triggerFileInput}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault()
+                      triggerFileInput()
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload resume PDF"
                   className={cn(
-                    "w-full h-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center p-8 transition-all cursor-pointer bg-black/20 hover:bg-black/35",
+                    "w-full h-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center p-8 transition-all cursor-pointer bg-black/20 hover:bg-black/35 outline-none focus-visible:border-[var(--accent-blue)]",
                     dragActive ? "border-[var(--accent-blue)] bg-black/35 shadow-[0_0_20px_rgba(0,210,255,0.05)]" : "border-[var(--border-glass)]",
                     isPending && "pointer-events-none"
                   )}
@@ -247,11 +257,11 @@ export default function ResumePage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-[var(--accent-blue)] border border-white/5 shadow-inner">
-                        <UploadCloud size={28} />
+                    <div className="flex flex-col items-center gap-5">
+                      <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-[var(--accent-blue)] border border-white/5 shadow-inner">
+                        <UploadCloud size={30} className="animate-bounce" />
                       </div>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1.5">
                         <span className="text-sm font-semibold text-[var(--text-primary)]">
                           Drag and drop your PDF resume here
                         </span>
@@ -265,7 +275,7 @@ export default function ResumePage() {
               </form>
 
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-4 py-3 rounded-lg leading-relaxed mt-4 flex items-center gap-2">
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-4 py-3 rounded-lg leading-relaxed mt-4 flex items-center gap-2 select-text">
                   <XCircle size={14} className="shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -274,32 +284,43 @@ export default function ResumePage() {
 
             {/* Sidebar History Panel */}
             <div className="flex flex-col gap-4">
-              <GlassCard className="h-full flex flex-col gap-4 max-h-[50vh] overflow-y-auto">
-                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center gap-2">
+              <GlassCard className="h-[50vh] flex flex-col gap-4 overflow-y-auto border-white/5 bg-[#12131A]/60">
+                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center gap-2 select-none">
                   <History size={15} className="text-[var(--text-secondary)]" />
                   <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Audit History</span>
                 </div>
 
                 {loadingHistory ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="w-5 h-5 rounded-full border border-t-transparent border-[var(--accent-blue)] animate-spin" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    {[1, 2, 3].map((n) => (
+                      <div key={n} className="flex items-center justify-between p-2.5 bg-white/5 border border-white/5 rounded-xl">
+                        <div className="flex items-center gap-2 w-full">
+                          <Skeleton className="w-4 h-4 rounded-md shrink-0 animate-pulse" />
+                          <div className="flex flex-col gap-1 w-3/4">
+                            <Skeleton className="w-2/3 h-2.5 rounded" />
+                            <Skeleton className="w-1/3 h-1.5 rounded" />
+                          </div>
+                        </div>
+                        <Skeleton className="w-6 h-3.5 rounded-md" />
+                      </div>
+                    ))}
                   </div>
                 ) : history.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-center p-4">
                     <span className="text-xs text-[var(--text-muted)]">No past uploads audited yet.</span>
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex-1 flex flex-col gap-2 select-text">
                     {history.map((item) => (
                       <div
                         key={item.id}
                         onClick={() => setReport(item)}
-                        className="flex items-center justify-between p-2.5 bg-black/20 hover:bg-white/[0.03] border border-white/5 hover:border-[var(--border-glass)] rounded-lg cursor-pointer transition-colors group"
+                        className="flex items-center justify-between p-2.5 bg-black/20 hover:bg-white/[0.03] border border-white/5 hover:border-[var(--border-glass)] rounded-xl cursor-pointer transition-colors group"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <FileText size={15} className="text-[var(--text-secondary)] shrink-0" />
                           <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[140px]">
+                            <span className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[120px]">
                               {item.file_name}
                             </span>
                             <span className="text-[9px] text-[var(--text-muted)] mt-0.5">
@@ -308,7 +329,7 @@ export default function ResumePage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={cn("text-xs font-bold", item.score >= 85 ? "text-[var(--success)]" : item.score >= 70 ? "text-amber-400" : "text-red-400")}>
+                          <span className={cn("text-xs font-bold", item.score >= 85 ? "text-emerald-400" : item.score >= 70 ? "text-amber-400" : "text-red-400")}>
                             {item.score}
                           </span>
                           <button
@@ -332,13 +353,13 @@ export default function ResumePage() {
             initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 15 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2"
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2 select-text"
           >
             {/* Left section: Score Circular Card & Suggestions */}
             <div className="lg:col-span-2 flex flex-col gap-4">
               
               {/* Score Circular Summary */}
-              <GlassCard className="p-6 flex items-center gap-6">
+              <GlassCard className="p-6 flex items-center gap-6 border-white/5 bg-[#12131A]/60 select-none">
                 {/* Radial Indicator */}
                 <div className="relative w-24 h-24 shrink-0">
                   <svg className="w-full h-full transform -rotate-90">
@@ -351,26 +372,26 @@ export default function ResumePage() {
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center select-none">
                     <span className="text-2xl font-bold text-[var(--text-primary)]">{report.score}</span>
-                    <span className="text-[9px] text-[var(--text-muted)] uppercase">ATS Score</span>
+                    <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">ATS Score</span>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5 min-w-0 select-text">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
                     <Sparkles size={14} className="text-[var(--accent-blue)]" />
                     <span>ATS Assessment Report</span>
                   </div>
-                  <span className="text-[11px] text-[var(--text-secondary)] leading-relaxed max-w-md">
-                    Analyzed: <span className="text-[var(--text-primary)] font-semibold truncate inline-block max-w-[140px] align-bottom">{report.file_name}</span>. Check the suggested formatting improvements and missing keywords list below to reach a perfect score.
+                  <span className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    Analyzed: <span className="text-[var(--text-primary)] font-semibold truncate inline-block max-w-[140px] align-bottom" title={report.file_name}>{report.file_name}</span>. Check the suggested formatting improvements and missing keywords list below to reach a perfect score.
                   </span>
                 </div>
               </GlassCard>
 
               {/* Improvements Checklist */}
-              <GlassCard className="p-6 flex flex-col gap-4">
-                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center justify-between">
+              <GlassCard className="p-6 flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center justify-between select-none">
                   <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Formatting & Content Fixes</span>
-                  <span className="text-[9px] text-[var(--text-muted)] select-none">
+                  <span className="text-[9px] text-[var(--text-muted)] font-semibold">
                     {Object.values(checkedImprovements).filter(Boolean).length} / {report.report_data.improvements.length} resolved
                   </span>
                 </div>
@@ -382,16 +403,16 @@ export default function ResumePage() {
                       <div
                         key={idx}
                         onClick={() => toggleImprovement(idx)}
-                        className="flex items-start gap-3 p-3 bg-black/25 border border-white/5 rounded-lg hover:border-[var(--border-glass)] cursor-pointer transition-all select-none"
+                        className="flex items-start gap-3 p-3 bg-black/25 border border-white/5 rounded-xl hover:border-[var(--border-glass)] cursor-pointer transition-all select-none"
                       >
-                        <button className="shrink-0 mt-0.5 text-[var(--text-secondary)]">
+                        <button className="shrink-0 mt-0.5 text-[var(--text-secondary)] cursor-pointer">
                           {isChecked ? (
-                            <CheckCircle size={15} className="text-[var(--success)]" />
+                            <CheckCircle size={16} className="text-emerald-400" />
                           ) : (
-                            <div className="w-[15px] h-[15px] rounded-full border border-[var(--text-secondary)]" />
+                            <div className="w-[16px] h-[16px] rounded-full border border-white/20 hover:border-white/40" />
                           )}
                         </button>
-                        <span className={`text-[11px] leading-relaxed transition-all ${isChecked ? 'line-through text-[var(--text-muted)] opacity-60' : 'text-[var(--text-primary)]'}`}>
+                        <span className={`text-[11px] leading-relaxed transition-all ${isChecked ? 'line-through text-[var(--text-muted)] opacity-60' : 'text-[var(--text-primary)] font-medium'}`}>
                           {imp}
                         </span>
                       </div>
@@ -406,17 +427,17 @@ export default function ResumePage() {
             <div className="flex flex-col gap-4">
               
               {/* Missing Skills Pill Container */}
-              <GlassCard className="p-6 flex flex-col gap-4">
-                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center gap-1.5">
+              <GlassCard className="p-6 flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center gap-1.5 select-none">
                   <Brain size={15} className="text-[var(--accent-blue)]" />
                   <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Missing Keywords</span>
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-1 select-none">
+                <div className="flex flex-wrap gap-2 pt-1">
                   {report.report_data.missingSkills.map((skill, idx) => (
                     <div
                       key={idx}
-                      className="px-2.5 py-1.5 rounded-lg bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 text-[10px] font-semibold text-[var(--accent-blue)] flex items-center gap-1.5 hover:bg-[var(--accent-blue)]/20 transition-all hover:scale-102"
+                      className="px-2.5 py-1.5 rounded-lg bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 text-[10px] font-semibold text-[var(--accent-blue)] flex items-center gap-1.5 hover:bg-[var(--accent-blue)]/20 transition-all hover:scale-102 select-none"
                     >
                       <span>{skill}</span>
                     </div>
@@ -425,8 +446,8 @@ export default function ResumePage() {
               </GlassCard>
 
               {/* Career Suggestions Bullet Cards */}
-              <GlassCard className="p-6 flex flex-col gap-4">
-                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center gap-1.5">
+              <GlassCard className="p-6 flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+                <div className="pb-2 border-b border-[var(--border-glass)] flex items-center gap-1.5 select-none">
                   <TrendingUp size={15} className="text-[var(--accent-purple)]" />
                   <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Recommended Career Roles</span>
                 </div>
@@ -435,10 +456,10 @@ export default function ResumePage() {
                   {report.report_data.careerSuggestions.map((career, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-2.5 p-2 bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-lg transition-all"
+                      className="flex items-center gap-2.5 p-2.5 bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-xl transition-all"
                     >
                       <ChevronRight size={13} className="text-[var(--accent-purple)] shrink-0" />
-                      <span className="text-[11px] font-medium text-[var(--text-secondary)]">{career}</span>
+                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{career}</span>
                     </div>
                   ))}
                 </div>

@@ -56,16 +56,18 @@ export function Navbar({
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleMobile}
+          aria-label="Open sidebar menu"
           className="md:hidden p-2 hover:bg-white/5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
         >
           <Menu size={20} />
         </button>
-        <div className="hidden sm:flex items-center gap-2 bg-black/40 border border-[var(--border-glass)] px-3 py-1.5 rounded-lg w-64">
-          <Search size={16} className="text-[var(--text-muted)]" />
+        <div className="hidden sm:flex items-center gap-2.5 bg-black/40 border border-white/5 px-4 py-2 rounded-full w-72 transition-all focus-within:border-[var(--accent-blue)]/50 focus-within:shadow-[0_0_0_3px_var(--accent-blue-glow)]">
+          <Search size={14} className="text-[var(--text-muted)]" />
           <input
             type="text"
+            aria-label="Search content"
             placeholder="Search notes, schedules, settings..."
-            className="bg-transparent border-none text-xs text-[var(--text-primary)] outline-none w-full placeholder-[var(--text-muted)]"
+            className="bg-transparent border-none text-xs text-white outline-none w-full placeholder-[var(--text-muted)] font-medium"
           />
         </div>
       </div>
@@ -75,14 +77,15 @@ export function Navbar({
         {/* AI Companion Toggle */}
         <button
           onClick={() => setCopilotOpen(!isCopilotOpen)}
+          aria-label="Toggle AI Copilot Companion"
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all select-none",
+            "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all select-none duration-200",
             isCopilotOpen
-              ? "bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black border-transparent shadow-[var(--shadow-accent-glow)] animate-pulse"
-              : "border-[var(--border-glass)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5"
+              ? "bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black border-transparent shadow-[0_4px_12px_rgba(0,210,255,0.25)]"
+              : "border-white/5 text-[var(--text-secondary)] hover:text-white hover:bg-white/5"
           )}
         >
-          <Sparkles size={14} />
+          <Sparkles size={13} />
           <span>AI Copilot</span>
         </button>
 
@@ -90,28 +93,29 @@ export function Navbar({
         <div className="relative" ref={notificationsRef}>
           <button
             onClick={() => setNotificationsOpen(!notificationsOpen)}
-            className="p-2 hover:bg-white/5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] relative cursor-pointer"
+            aria-label="Notifications"
+            className="p-2 hover:bg-white/5 rounded-xl text-[var(--text-secondary)] hover:text-white relative cursor-pointer transition-all"
           >
-            <Bell size={18} />
+            <Bell size={16} />
             {mockNotifications.some((n) => !n.read) && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--accent-blue)] rounded-full ring-2 ring-[var(--canvas-bg)]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--accent-blue)] rounded-full ring-2 ring-[#0B0C10]" />
             )}
           </button>
 
           {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-80 rounded-xl border border-[var(--border-glass)] bg-[rgba(22,23,30,0.95)] backdrop-blur-2xl p-4 shadow-xl flex flex-col gap-3">
-              <div className="flex justify-between items-center pb-2 border-b border-[var(--border-glass)]">
-                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Alerts</span>
-                <span className="text-[10px] text-[var(--accent-blue)] cursor-pointer hover:underline">Mark all read</span>
+            <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/5 bg-[#12131A]/95 backdrop-blur-2xl p-4 shadow-2xl flex flex-col gap-3 z-50">
+              <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                <span className="text-[10px] font-bold text-white uppercase tracking-wider">Alerts</span>
+                <span className="text-[9px] text-[var(--accent-blue)] cursor-pointer hover:underline font-bold">Mark all read</span>
               </div>
               <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto">
                 {mockNotifications.map((notif) => (
-                  <div key={notif.id} className="flex gap-2.5 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
+                  <div key={notif.id} className="flex gap-2.5 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
                     <div className={cn("w-1.5 h-1.5 rounded-full mt-1.5 shrink-0", notif.read ? "bg-transparent" : "bg-[var(--accent-blue)]")} />
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-semibold text-[var(--text-primary)]">{notif.title}</span>
-                      <span className="text-[11px] text-[var(--text-secondary)] leading-normal">{notif.body}</span>
-                      <span className="text-[9px] text-[var(--text-muted)] mt-0.5">{notif.time}</span>
+                      <span className="text-xs font-semibold text-white">{notif.title}</span>
+                      <span className="text-[10px] text-[var(--text-secondary)] leading-normal">{notif.body}</span>
+                      <span className="text-[8px] text-[var(--text-muted)] mt-0.5 font-mono">{notif.time}</span>
                     </div>
                   </div>
                 ))}
@@ -124,38 +128,39 @@ export function Navbar({
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setProfileOpen(!profileOpen)}
-            className="w-8 h-8 rounded-full border border-[var(--border-glass)] bg-white/5 flex items-center justify-center text-[var(--text-primary)] font-bold text-sm cursor-pointer select-none hover:bg-white/10"
+            aria-label="User Profile menu"
+            className="w-8 h-8 rounded-full border border-white/5 bg-white/5 flex items-center justify-center text-white font-bold text-xs cursor-pointer select-none hover:bg-white/10 transition-all"
           >
             {userName.charAt(0)}
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[var(--border-glass)] bg-[rgba(22,23,30,0.95)] backdrop-blur-2xl p-4 shadow-xl flex flex-col gap-3">
-              <div className="flex items-center gap-3 pb-3 border-b border-[var(--border-glass)]">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-black font-bold text-md select-none">
+            <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-white/5 bg-[#12131A]/95 backdrop-blur-2xl p-4 shadow-2xl flex flex-col gap-3.5 z-50">
+              <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-black font-bold text-sm select-none shrink-0 shadow-lg shadow-[var(--accent-blue-glow)]">
                   {userName.charAt(0)}
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-xs font-semibold text-[var(--text-primary)] truncate">{userName}</span>
-                  <span className="text-[10px] text-[var(--text-secondary)] truncate">{userEmail}</span>
+                  <span className="text-xs font-semibold text-white truncate">{userName}</span>
+                  <span className="text-[10px] text-[var(--text-secondary)] truncate font-mono">{userEmail}</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-1 text-[11px] text-[var(--text-secondary)] py-1">
-                <div className="flex justify-between">
+              <div className="flex flex-col gap-1.5 text-[10px] text-[var(--text-secondary)] py-0.5">
+                <div className="flex justify-between items-center">
                   <span>Major:</span>
-                  <span className="text-[var(--text-primary)] truncate font-medium">{major}</span>
+                  <span className="text-white truncate font-semibold max-w-[120px]">{major}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>School:</span>
-                  <span className="text-[var(--text-primary)] truncate font-medium">{university}</span>
+                <div className="flex justify-between items-center">
+                  <span>University:</span>
+                  <span className="text-white truncate font-semibold max-w-[120px]">{university}</span>
                 </div>
               </div>
-              <form action={signoutAction} className="border-t border-[var(--border-glass)] pt-2">
+              <form action={signoutAction} className="border-t border-white/5 pt-2">
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 cursor-pointer transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/15 cursor-pointer transition-colors"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={13} />
                   <span>Sign Out</span>
                 </button>
               </form>

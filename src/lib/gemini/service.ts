@@ -1,19 +1,38 @@
 import { callGemini } from './client'
+import { createClient } from '@/lib/supabase/server'
+import { queryAcademicBrain } from './retrieval'
 
 /**
- * AI Centralized Service Hub
- * Encapsulates all prompt engineering, system instructions, and response JSON schemas.
+ * Helper to fetch retrieval context from the Academic Brain.
  */
+async function getBrainContext(query: string, limit: number = 3): Promise<string> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const brain = await queryAcademicBrain(user.id, query, limit)
+      return brain.hasMemory ? brain.contextMarkdown : ''
+    }
+  } catch (err: unknown) {
+    console.warn('Failed to retrieve Academic Brain context for query:', query, err)
+  }
+  return ''
+}
 
 // ----------------------------------------------------
 // 1. STUDY PLANNER SERVICE
 // ----------------------------------------------------
 export async function generateStudyPlan(subject: string, examDate: string, dailyHours: string) {
-  const systemInstruction = 
-    'You are a premier college study coordinator. Based on the subject, exam date, and daily study hours constraint, you generate structured, sequential weekly milestones and revision schedules. Ensure output strictly matches the requested JSON schema structure.'
+  const brainContext = await getBrainContext(`${subject} syllabus coursework exam`)
 
-  const prompt = 
-    `Create a detailed study roadmap for the subject: "${subject}". The exam is scheduled on: "${examDate}". The student can dedicate "${dailyHours}" hours per day. Generate weekly milestones up to the exam date, with realistic daily checklist tasks. Include specific dates for revision phases.`
+  const systemInstruction = 
+    'You are a premier college study coordinator. Based on the subject, exam date, daily study hours, and any uploaded materials in the Academic Brain, you generate structured, sequential weekly milestones and revision schedules. Ensure output strictly matches the requested JSON schema structure.'
+
+  let prompt = `Create a detailed study roadmap for the subject: "${subject}". The exam is scheduled on: "${examDate}". The student can dedicate "${dailyHours}" hours per day. Generate weekly milestones up to the exam date, with realistic daily checklist tasks. Include specific dates for revision phases.`
+
+  if (brainContext) {
+    prompt += `\n\nUse the following extracted student study records and syllabus metrics as the primary source of truth for planning topic details, weights, and priorities:\n${brainContext}`
+  }
 
   const responseSchema = {
     type: "object",
@@ -58,10 +77,12 @@ export async function generateStudyPlan(subject: string, examDate: string, daily
 // 2. PROJECT BUILDER SERVICE
 // ----------------------------------------------------
 export async function generateProjectIdeas(targetRole: string, skillLevel: string, interests: string) {
-  const systemInstruction = 
-    'You are a premier career advisor and technical architect for software engineering students. Based on the target role, skill level, and interests, you generate 3 highly tailored, professional coding project ideas that would stand out on a resume. For each project, you generate a title, description, features, tech stack, a text-based ASCII directory architecture, a step-by-step checkable roadmap, and a complete, comprehensive Markdown Product Requirement Document (PRD). You must return output strictly matching the requested JSON schema structure.'
+  const brainContext = await getBrainContext(`${targetRole} ${interests} coursework projects`)
 
-  const prompt = 
+  const systemInstruction = 
+    'You are a premier career advisor and technical architect for software engineering students. Based on the target role, skill level, interests, and uploaded course materials, you generate 3 highly tailored, professional coding project ideas that would stand out on a resume. For each project, you generate a title, description, features, tech stack, a text-based ASCII directory architecture, a step-by-step checkable roadmap, and a complete, comprehensive Markdown Product Requirement Document (PRD). You must return output strictly matching the requested JSON schema structure.'
+
+  let prompt = 
     `Generate 3 distinct, professional project ideas for a student with the following profile:
 - Target Role: "${targetRole}"
 - Skill Level: "${skillLevel}"
@@ -82,7 +103,11 @@ For each of the 3 projects, you must provide:
    - Out of Scope features for V1
    - Success Metrics & KPIs for evaluation
 
-Ensure the PRD is comprehensive, rich in detail, and formatted beautifully in markdown. Do not include markdown code block backticks inside the JSON string other than escaping them properly; write normal markdown.`
+Ensure the PRD is comprehensive, rich in detail, and formatted beautifully in markdown.`
+
+  if (brainContext) {
+    prompt += `\n\nEnsure these project ideas tie into the student's actual learning concepts, coursework files, or lecture notes retrieved from their Academic Brain:\n${brainContext}`
+  }
 
   const responseSchema = {
     type: "object",
@@ -134,10 +159,15 @@ Ensure the PRD is comprehensive, rich in detail, and formatted beautifully in ma
 // 3. SMART NOTES SERVICE
 // ----------------------------------------------------
 export async function generateNoteSummary(text: string) {
+  const brainContext = await getBrainContext(text.substring(0, 150))
+
   const systemInstruction = 
     'You are an expert academic tutor. You summarize long study notes into concise, well-formatted Markdown bullet points. Include key takeaways, main definitions, and core concepts. Output should be returned in a clean JSON format matching the schema.'
   
-  const prompt = `Generate a detailed study summary for the following text:\n\n${text}`
+  let prompt = `Generate a detailed study summary for the following text:\n\n${text}`
+  if (brainContext) {
+    prompt += `\n\nCross-reference and enrich the summary with related concepts, formulas, and references retrieved from the Academic Brain:\n${brainContext}`
+  }
   
   const responseSchema = {
     type: "object",
@@ -152,10 +182,15 @@ export async function generateNoteSummary(text: string) {
 }
 
 export async function generateNoteQuiz(text: string) {
+  const brainContext = await getBrainContext(text.substring(0, 150))
+
   const systemInstruction = 
     'You are an expert academic coordinator. Based on the provided study materials, you generate 5 realistic multiple-choice practice quiz questions. Ensure that questions range in difficulty, cover important concepts in the text, and contain detailed helpful explanations for the correct answers. Output must strictly match the JSON schema structure.'
   
-  const prompt = `Generate 5 multiple-choice practice quiz questions based on the following study materials:\n\n${text}`
+  let prompt = `Generate 5 multiple-choice practice quiz questions based on the following study materials:\n\n${text}`
+  if (brainContext) {
+    prompt += `\n\nIncorporate relevant formulas or exam focus structures retrieved from the Academic Brain:\n${brainContext}`
+  }
   
   const responseSchema = {
     type: "object",
@@ -185,10 +220,15 @@ export async function generateNoteQuiz(text: string) {
 }
 
 export async function generateNoteFlashcards(text: string) {
+  const brainContext = await getBrainContext(text.substring(0, 150))
+
   const systemInstruction = 
     'You are a study coordinator specialized in active recall and spaced repetition. You convert the study text into 5-10 direct flashcards. Each card has a specific "front" (question, term, or prompt) and a concise "back" (answer, explanation, or definition). Output must strictly match the JSON schema structure.'
   
-  const prompt = `Generate 6-10 active recall flashcards based on the following study text:\n\n${text}`
+  let prompt = `Generate 6-10 active recall flashcards based on the following study text:\n\n${text}`
+  if (brainContext) {
+    prompt += `\n\nCross-reference terms with the student's Academic Brain knowledge mapping:\n${brainContext}`
+  }
   
   const responseSchema = {
     type: "object",
@@ -213,6 +253,8 @@ export async function generateNoteFlashcards(text: string) {
 }
 
 export async function queryNoteChat(text: string, query: string, history: Array<{ role: string; content: string }>) {
+  const brainContext = await getBrainContext(query, 4)
+
   const systemInstruction = 
     'You are a smart note copilot RAG assistant. You answer questions strictly using the provided study sources as your primary context. If the answer cannot be found in the provided sources, answer using your general knowledge but clearly state that the information was not in the student\'s notes. Keep your answers brief, structured, and student-focused.'
   
@@ -221,6 +263,11 @@ export async function queryNoteChat(text: string, query: string, history: Array<
     : ''
 
   let prompt = `Here are the student's study source notes:\n---START SOURCES---\n${text}\n---END SOURCES---\n\n`
+  
+  if (brainContext) {
+    prompt += `Retrieved Academic Brain Context:\n---START BRAIN CONTEXT---\n${brainContext}\n---END BRAIN CONTEXT---\n\n`
+  }
+
   if (historyText) {
     prompt += `Conversation History:\n${historyText}\n\n`
   }
@@ -242,10 +289,15 @@ export async function queryNoteChat(text: string, query: string, history: Array<
 // 4. PLACEMENT PREPARATION SERVICE
 // ----------------------------------------------------
 export async function generateAptitudeQuestions(topic: string) {
+  const brainContext = await getBrainContext(`${topic} aptitude math exam`)
+
   const systemInstruction = 
-    'You are a quantitative and logical aptitude examiner. Based on the selected topic, you generate 3 multiple-choice practice questions. Ensure that questions range in difficulty, cover relevant formulas/patterns, and contain detailed step-by-step explanations. Output must strictly match the JSON schema structure.'
+    'You are a quantitative and logical aptitude examiner. Based on the selected topic and Academic Brain logs, you generate 3 multiple-choice practice questions. Ensure that questions range in difficulty, cover relevant formulas/patterns, and contain detailed step-by-step explanations. Output must strictly match the JSON schema structure.'
   
-  const prompt = `Generate 3 aptitude questions (MCQ) for the topic: "${topic}".`
+  let prompt = `Generate 3 aptitude questions (MCQ) for the topic: "${topic}".`
+  if (brainContext) {
+    prompt += `\n\nEnsure questions align with the student's actual level, syllabus, or lecture guidelines retrieved from their Academic Brain:\n${brainContext}`
+  }
   
   const responseSchema = {
     type: "object",
@@ -275,10 +327,15 @@ export async function generateAptitudeQuestions(topic: string) {
 }
 
 export async function generateDsaProblems(topic: string) {
+  const brainContext = await getBrainContext(`${topic} DSA algorithm coding`)
+
   const systemInstruction = 
     'You are a technical coding interviewer. You generate 2 Leetcode-style coding challenges for the chosen DSA topic. Provide a professional title, difficulty label (Easy, Medium, Hard), complete description, constraints, sample inputs and outputs, optimal approach summary (using Big O), and code editor boilerplate template for JavaScript. Output must strictly match the JSON schema structure.'
   
-  const prompt = `Generate 2 DSA coding problems for the topic: "${topic}".`
+  let prompt = `Generate 2 DSA coding problems for the topic: "${topic}".`
+  if (brainContext) {
+    prompt += `\n\nTether problem topics to courses or concepts found in the student's Academic Brain:\n${brainContext}`
+  }
   
   const responseSchema = {
     type: "object",
@@ -307,10 +364,15 @@ export async function generateDsaProblems(topic: string) {
 }
 
 export async function generateHrQuestions() {
+  const brainContext = await getBrainContext("HR behavioral interview coursework skills")
+
   const systemInstruction = 
     'You are a corporate human resources manager conducting behavioral interviews. You generate 3 common behavioral questions (e.g. leadership, conflict, motivation). For each question, provide detailed guidelines on how to structure the response using the STAR method (Situation, Task, Action, Result) and outline a sample ideal answer. Output must strictly match the JSON schema structure.'
   
-  const prompt = 'Generate 3 common behavioral HR interview questions.'
+  let prompt = 'Generate 3 common behavioral HR interview questions.'
+  if (brainContext) {
+    prompt += `\n\nCustomize these questions or ideal outlines to draw from the student's actual project experiences or courses logged in their Academic Brain:\n${brainContext}`
+  }
   
   const responseSchema = {
     type: "object",
@@ -345,10 +407,15 @@ export async function generateHrQuestions() {
 }
 
 export async function startMockInterview(jobRole: string) {
+  const brainContext = await getBrainContext(`${jobRole} skills projects`)
+
   const systemInstruction = 
     'You are an AI recruiter conducting a job interview. You start by greeting the student professionally, introducing yourself, and asking the first interview question tailored specifically for the chosen job role. Return your opening remarks and the first question in the JSON schema.'
   
-  const prompt = `Start a simulated professional interview for the role: "${jobRole}".`
+  let prompt = `Start a simulated professional interview for the role: "${jobRole}".`
+  if (brainContext) {
+    prompt += `\n\nExtract relevant projects, major concepts, and student skills from their Academic Brain to reference dynamically during the greeting and initial question:\n${brainContext}`
+  }
   
   const responseSchema = {
     type: "object",
@@ -364,6 +431,8 @@ export async function startMockInterview(jobRole: string) {
 }
 
 export async function respondMockInterview(jobRole: string, userMessage: string, history: Array<{ role: string; content: string }>) {
+  const brainContext = await getBrainContext(`${jobRole} skills projects evaluation`)
+
   const systemInstruction = 
     'You are an AI recruiter conducting a job interview. You evaluate the student\'s response to your previous question. Provide a score out of 100 assessing their correctness, tone, and delivery. Give brief constructive feedback on how they can improve, and ask the next interview question. Output strictly matching the JSON schema.'
 
@@ -372,6 +441,9 @@ export async function respondMockInterview(jobRole: string, userMessage: string,
     : ''
 
   let prompt = `Selected Job Role: "${jobRole}"\n\n`
+  if (brainContext) {
+    prompt += `Candidate Academic Context from Academic Brain:\n${brainContext}\n\n`
+  }
   if (historyText) {
     prompt += `Conversation History:\n${historyText}\n\n`
   }

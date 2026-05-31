@@ -1,18 +1,17 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import {
+  ArrowRight,
+  Flame,
   CheckCircle2,
   Circle,
-  TrendingUp,
-  Award,
-  Sparkles,
-  Flame,
-  Plus,
-  Briefcase,
-  AlertCircle
+  Clock,
+  Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,54 +20,120 @@ interface DashboardGridProps {
 }
 
 export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
-  // Widget state: Tasks checklist
-  const [tasks, setTasks] = useState([
-    { id: '1', title: 'Upload CS302 Syllabus PDF', due: 'Today', priority: 'high', done: false },
-    { id: '2', title: 'Complete Leetcode Daily Challenge', due: 'Today', priority: 'medium', done: true },
-    { id: '3', title: 'Revise resume alignment for software internships', due: 'Tomorrow', priority: 'high', done: false },
-    { id: '4', title: 'Organize study planner schedule block', due: 'In 3 days', priority: 'low', done: false },
+  const supabase = createClient()
+
+  // User stats
+  const [stats, setStats] = useState({
+    activePlanner: 'Advanced Operating Systems',
+    plannerProgress: 64,
+    activeProject: 'Fintech SaaS Dashboard',
+    projectProgress: 75,
+    studyHoursTarget: 10,
+    studyHoursAchieved: 8.2,
+    streak: 14
+  })
+
+  // Notes list state
+  const [notes, setNotes] = useState([
+    { id: '1', title: 'Indian Art and Culture', category: 'By Nitin Singhania', progress: 40 },
+    { id: '2', title: 'Indian Polity', category: 'By M Laxmikanth', progress: 28 },
+    { id: '3', title: 'Geography of India', category: 'By Majid Husain', progress: 12 }
   ])
 
-  const toggleTask = (id: string) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, done: !t.done } : t))
+  // To-Do list state
+  const [todos, setTodos] = useState([
+    { id: '1', title: 'Aptitude Assignment', time: '8:00 AM - 9:00 AM', done: false, color: '#10B981', category: 'aptitude' },
+    { id: '2', title: 'Complete 12 History Sessions', time: '9:00 AM - 2:00 PM', done: true, color: '#F59E0B', category: 'planner' },
+    { id: '3', title: 'Aptitude Live Session', time: '3:00 PM - 6:00 PM', done: false, color: '#00D2FF', category: 'aptitude' },
+    { id: '4', title: 'Read Current Affairs', time: '6:00 PM - 7:30 PM', done: false, color: '#9D4EDD', category: 'notes' },
+    { id: '5', title: 'Prepare Notes of Statistics', time: '8:30 PM - 10:00 PM', done: false, color: '#10B981', category: 'notes' },
+    { id: '6', title: 'Maths Practice', time: '10:00 PM - 12:00 AM', done: false, color: '#00D2FF', category: 'aptitude' }
+  ])
+
+  // Load from local storage or database on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          // Fetch notes count & update first note details if any
+          const { data: notesData } = await supabase
+            .from('notes')
+            .select('id, title, created_at')
+            .limit(3)
+          
+          if (notesData && notesData.length > 0) {
+            const parsedNotes = notesData.map((n, i) => ({
+              id: n.id,
+              title: n.title,
+              category: 'Student Notebook',
+              progress: i === 0 ? 68 : i === 1 ? 42 : 18
+            }))
+            setNotes(parsedNotes)
+          }
+
+          // Fetch study planner status
+          const { data: planData } = await supabase
+            .from('study_plans')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1)
+
+          if (planData && planData.length > 0) {
+            const plan = planData[0]
+            const storageKey = `campusos-progress-${plan.id}`
+            const savedProgress = localStorage.getItem(storageKey)
+            let percent = 45
+            if (savedProgress) {
+              try {
+                const checked = JSON.parse(savedProgress)
+                const totalTasks = plan.roadmap.milestones.reduce((acc: number, m: { tasks: unknown[] }) => acc + m.tasks.length, 0)
+                const completed = Object.values(checked).filter(Boolean).length
+                percent = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 45
+              } catch {
+                // error ignored
+              }
+            }
+            setStats(prev => ({
+              ...prev,
+              activePlanner: plan.subject,
+              plannerProgress: percent
+            }))
+          }
+
+          // Fetch project status
+          const { data: projectData } = await supabase
+            .from('student_projects')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1)
+
+          if (projectData && projectData.length > 0) {
+            setStats(prev => ({
+              ...prev,
+              activeProject: projectData[0].title,
+              projectProgress: 80
+            }))
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching dashboard states:', e)
+      }
+    }
+    loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const toggleTodo = (id: string) => {
+    setTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t))
   }
-
-  // Widget state: Goals
-  const goals = [
-    { id: '1', name: 'Master Tree Algorithms', progress: 85, color: 'var(--accent-blue)' },
-    { id: '2', name: 'Complete 3 Project Modules', progress: 60, color: 'var(--accent-purple)' },
-    { id: '3', name: 'Apply to 10 Summer Roles', progress: 40, color: '#10B981' },
-  ]
-
-  // Custom Chart Data: Study Hours
-  const studyHoursData = [
-    { day: 'Mon', hours: 4.5 },
-    { day: 'Tue', hours: 6.0 },
-    { day: 'Wed', hours: 3.5 },
-    { day: 'Thu', hours: 8.0 },
-    { day: 'Fri', hours: 5.5 },
-    { day: 'Sat', hours: 7.0 },
-    { day: 'Sun', hours: 9.0 }
-  ]
-  const chartHeight = 140
-  const chartWidth = 420
-
-  // Custom Chart Data: Course Progress
-  const coursesProgress = [
-    { code: 'CS301', progress: 88, name: 'Data Structures' },
-    { code: 'ECE102', progress: 74, name: 'Digital Logic' },
-    { code: 'MATH201', progress: 62, name: 'Linear Algebra' },
-    { code: 'COMP404', progress: 95, name: 'AI Models' }
-  ]
 
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.05
-      }
+      transition: { staggerChildren: 0.05 }
     }
   }
 
@@ -82,289 +147,382 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="flex flex-col gap-6 select-none"
+      className="grid grid-cols-1 xl:grid-cols-3 gap-6 select-none"
     >
-      {/* Welcome Banner */}
-      <div className="flex flex-col gap-1.5 md:flex-row md:justify-between md:items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] bg-clip-text text-transparent">
-            Welcome Back, {userName}
-          </h1>
-          <p className="text-[var(--text-secondary)] text-sm mt-1">
-            Here is your academic and internship overview for today.
-          </p>
-        </div>
-        <div className="flex gap-2.5 mt-3 md:mt-0">
-          <div className="glass-card px-4 py-2 flex items-center gap-2 border-[var(--border-glass)]">
-            <Flame className="text-amber-500 fill-amber-500 animate-pulse" size={16} />
-            <span className="text-xs font-semibold text-[var(--text-primary)]">14 Day Streak</span>
+      {/* LEFT & CENTER MAIN PANEL (lg:col-span-2) */}
+      <div className="xl:col-span-2 flex flex-col gap-6">
+        
+        {/* Welcome & Streak Banner */}
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:justify-between sm:items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] bg-clip-text text-transparent">
+              Welcome Back, {userName}
+            </h1>
+            <p className="text-[var(--text-secondary)] text-xs mt-1">
+              Your academic preparation hub. Here is your dashboard overview for today.
+            </p>
+          </div>
+          <div className="flex gap-2 mt-3 sm:mt-0">
+            <div className="glass-card px-3.5 py-1.5 flex items-center gap-2 border-[var(--border-glass)]">
+              <Flame className="text-amber-500 fill-amber-500 animate-pulse" size={14} />
+              <span className="text-[11px] font-bold text-[var(--text-primary)]">{stats.streak} Day Streak</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Grid Layout Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* WIDGET 1: Tasks Due */}
+        {/* 1. PROMIMEMT AI BANNER (Maths Reasoning Style) */}
         <motion.div variants={itemVariants}>
-          <GlassCard className="h-full flex flex-col justify-between">
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center pb-2 border-b border-[var(--border-glass)]">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">Tasks Due</h3>
-                <span className="text-[10px] text-[var(--accent-blue)] font-semibold">{tasks.filter(t => !t.done).length} pending</span>
-              </div>
-              <div className="flex flex-col gap-3">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    onClick={() => toggleTask(task.id)}
-                    className={cn(
-                      "flex items-start gap-3 p-2.5 rounded-lg hover:bg-white/[0.03] transition-all cursor-pointer border border-transparent",
-                      task.done ? "opacity-50" : "hover:border-[var(--border-glass)]"
-                    )}
-                  >
-                    <button className="text-[var(--text-secondary)] shrink-0 mt-0.5">
-                      {task.done ? (
-                        <CheckCircle2 size={16} className="text-[var(--success)]" />
-                      ) : (
-                        <Circle size={16} />
-                      )}
-                    </button>
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <span className={cn("text-xs font-medium text-[var(--text-primary)] truncate", task.done && "line-through text-[var(--text-muted)]")}>
-                        {task.title}
-                      </span>
-                      <div className="flex items-center gap-2 text-[9px]">
-                        <span className="text-[var(--text-muted)]">{task.due}</span>
-                        <span className={cn(
-                          "px-1.5 py-0.2 rounded-full border",
-                          task.priority === 'high' ? "border-red-500/20 bg-red-500/10 text-red-400" :
-                          task.priority === 'medium' ? "border-amber-500/20 bg-amber-500/10 text-amber-400" :
-                          "border-blue-500/20 bg-blue-500/10 text-blue-400"
-                        )}>
-                          {task.priority}
-                        </span>
-                      </div>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#00A3FF] to-[#0066FF] p-6 text-white shadow-xl flex flex-col justify-between min-h-[160px] border border-white/10 group">
+            {/* Mathematical / Coding equations background */}
+            <div className="absolute inset-0 opacity-15 font-mono text-[9px] pointer-events-none select-none overflow-hidden leading-tight p-4">
+              {`∫ (sin(x) / cos(x)) dx = -ln|cos(x)| + C\n`}
+              {`f(n) = f(n-1) + f(n-2) // Fibonacci Sequence\n`}
+              {`for (let i = 0; i < n; i++) { dp[i] = Math.max(dp[i-1] + arr[i], arr[i]) }\n`}
+              {`const binarySearch = (arr, t) => { let l = 0, r = arr.length - 1; ... }\n`}
+              {`A = πr² | lim(x→∞) (1 + 1/n)ⁿ = e | ▽ × E = -∂B/∂t\n`}
+              {`O(log n) < O(n) < O(n log n) < O(n²)`}
+            </div>
+
+            {/* Glowing ambient light */}
+            <span className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-cyan-400/20 blur-3xl group-hover:scale-110 transition-transform duration-700" />
+
+            <div className="flex flex-col gap-1.5 relative z-10">
+              <span className="text-[9px] font-extrabold uppercase tracking-widest text-cyan-200">
+                HELLO ASPIRANTS !!!
+              </span>
+              <h2 className="text-2xl font-bold tracking-tight leading-none text-white font-heading">
+                AI Copilot & Smart Builder
+              </h2>
+              <p className="text-xs text-white/80 max-w-sm mt-1 leading-relaxed">
+                Generate study plans, audit resume ATS compatibility, run mock interview coding sessions, and organize note guides in seconds.
+              </p>
+            </div>
+
+            <div className="mt-4 relative z-10 self-start">
+              <Link
+                href="/projects"
+                className="inline-flex bg-black text-white hover:bg-black/80 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 items-center gap-1.5 cursor-pointer select-none"
+              >
+                <span>Start AI Builder</span>
+                <ArrowRight size={13} />
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* 2. CONTINUE LEARNING SECTION (Progress Cards Block) */}
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center px-1">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
+              Continue Learning
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Card 1: Study Planner */}
+            <motion.div variants={itemVariants}>
+              <GlassCard className="p-4 flex flex-col justify-between min-h-[140px] hover:border-amber-400/30 transition-all border-white/5 bg-[#171821]/45">
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                        {stats.activePlanner}
+                      </h4>
+                      <span className="text-[10px] text-[var(--text-muted)]">Study Planner Target</span>
                     </div>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] font-semibold text-amber-400 uppercase tracking-wider">
+                      Active Plan
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-            <button className="w-full flex items-center justify-center gap-1.5 py-2 mt-4 border border-dashed border-[var(--border-glass)] hover:border-[var(--accent-blue)] rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer">
-              <Plus size={14} />
-              <span>Add custom task</span>
-            </button>
-          </GlassCard>
-        </motion.div>
 
-        {/* WIDGET 2: Resume Score & Suggestions */}
-        <motion.div variants={itemVariants}>
-          <GlassCard className="h-full flex flex-col justify-between">
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center pb-2 border-b border-[var(--border-glass)]">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">Resume Score</h3>
-                <span className="text-[10px] text-[var(--accent-purple)] font-semibold flex items-center gap-1">
-                  <Sparkles size={10} /> AI Audited
-                </span>
-              </div>
-              <div className="flex items-center gap-6 p-2">
-                {/* Radial Score Indicator */}
-                <div className="relative w-20 h-20 shrink-0">
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="40" cy="40" r="34" className="stroke-white/5 fill-transparent" strokeWidth="6" />
-                    <circle cx="40" cy="40" r="34" className="stroke-[var(--accent-blue)] fill-transparent" strokeWidth="6"
-                      strokeDasharray={2 * Math.PI * 34}
-                      strokeDashoffset={(2 * Math.PI * 34) * (1 - 88 / 100)}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-lg font-bold text-[var(--text-primary)]">88</span>
-                    <span className="text-[9px] text-[var(--text-muted)]">/ 100</span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-bold text-[var(--text-primary)]">Looking Strong!</span>
-                  <span className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                    Your resume has high ATS compatibility. Make 2 quick edits to cross 90.
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 text-[11px]">
-                <div className="flex items-start gap-2 bg-white/[0.02] border border-[var(--border-glass)] p-2 rounded-lg">
-                  <AlertCircle size={14} className="text-[var(--accent-blue)] shrink-0 mt-0.5" />
-                  <span className="text-[var(--text-secondary)]">Quantify metrics in your Stanford Project details.</span>
-                </div>
-                <div className="flex items-start gap-2 bg-white/[0.02] border border-[var(--border-glass)] p-2 rounded-lg">
-                  <AlertCircle size={14} className="text-[var(--accent-purple)] shrink-0 mt-0.5" />
-                  <span className="text-[var(--text-secondary)]">Include key system architecture tools (e.g. Supabase).</span>
-                </div>
-              </div>
-            </div>
-            <button className="w-full py-2 mt-4 bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] rounded-lg text-xs font-semibold text-[var(--text-primary)] transition-all cursor-pointer text-center">
-              Open Resume Hub
-            </button>
-          </GlassCard>
-        </motion.div>
-
-        {/* WIDGET 3: Internship Applications & Goals */}
-        <motion.div variants={itemVariants}>
-          <GlassCard className="h-full flex flex-col justify-between">
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center pb-2 border-b border-[var(--border-glass)]">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">Applications</h3>
-                <Briefcase size={14} className="text-[var(--text-muted)]" />
-              </div>
-              
-              {/* Stat Counters */}
-              <div className="grid grid-cols-3 gap-3 bg-black/20 border border-[var(--border-glass)] p-3 rounded-xl text-center">
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold text-[var(--text-primary)]">14</span>
-                  <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Applied</span>
-                </div>
-                <div className="flex flex-col border-x border-[var(--border-glass)]">
-                  <span className="text-xl font-bold text-[var(--accent-blue)]">3</span>
-                  <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Interviews</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold text-[var(--success)]">1</span>
-                  <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Offers</span>
-                </div>
-              </div>
-
-              {/* Application milestones */}
-              <div className="flex flex-col gap-2.5">
-                <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Active Goals</span>
-                {goals.map(g => (
-                  <div key={g.id} className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-xs font-medium">
-                      <span className="text-[var(--text-secondary)]">{g.name}</span>
-                      <span className="text-[var(--text-primary)]">{g.progress}%</span>
+                  {/* Custom Progress Bar */}
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    <div className="flex justify-between text-[10px] font-semibold">
+                      <span className="text-[var(--text-secondary)]">Completion Progress</span>
+                      <span className="text-amber-400">{stats.plannerProgress}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${g.progress}%`, backgroundColor: g.color }} />
+                      <div
+                        className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                        style={{ width: `${stats.plannerProgress}%` }}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-            <button className="w-full py-2 mt-4 bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] rounded-lg text-xs font-semibold text-[var(--text-primary)] transition-all cursor-pointer text-center">
-              Manage Tracker
-            </button>
-          </GlassCard>
-        </motion.div>
+                </div>
 
-        {/* WIDGET 4: Productivity Area Chart (Custom SVG) */}
-        <motion.div variants={itemVariants} className="lg:col-span-2">
-          <GlassCard className="flex flex-col gap-4">
-            <div className="flex justify-between items-center pb-2 border-b border-[var(--border-glass)]">
-              <div className="flex flex-col gap-0.5">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">Productivity Chart</h3>
-                <span className="text-[10px] text-[var(--text-secondary)]">Weekly Study Hours (Monday - Sunday)</span>
-              </div>
-              <div className="flex items-center gap-1 text-[var(--success)] text-xs font-semibold">
-                <TrendingUp size={14} />
-                <span>+12.4% vs last week</span>
-              </div>
-            </div>
+                <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5">
+                  <span className="text-[9px] text-[var(--text-muted)] font-medium flex items-center gap-1">
+                    <Clock size={11} /> 12 days left
+                  </span>
+                  <Link
+                    href="/planner"
+                    className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-[var(--text-primary)] transition-all cursor-pointer select-none"
+                  >
+                    Continue
+                  </Link>
+                </div>
+              </GlassCard>
+            </motion.div>
 
-            {/* High Fidelity Custom SVG Area Chart */}
-            <div className="relative pt-4 w-full flex items-center justify-center">
-              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full overflow-visible">
-                <defs>
-                  {/* Neon Glow Area Fill Gradient */}
-                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--accent-blue)" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="var(--accent-purple)" stopOpacity="0" />
-                  </linearGradient>
-                  {/* Neon Line Path Gradient */}
-                  <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="var(--accent-blue)" />
-                    <stop offset="100%" stopColor="var(--accent-purple)" />
-                  </linearGradient>
-                  {/* Shadow Filter for Glow effect */}
-                  <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
-                </defs>
+            {/* Card 2: AI Project Builder */}
+            <motion.div variants={itemVariants}>
+              <GlassCard className="p-4 flex flex-col justify-between min-h-[140px] hover:border-emerald-400/30 transition-all border-white/5 bg-[#171821]/45">
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                        {stats.activeProject}
+                      </h4>
+                      <span className="text-[10px] text-[var(--text-muted)]">Portfolio Project</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-semibold text-emerald-400 uppercase tracking-wider">
+                      Building
+                    </span>
+                  </div>
 
-                {/* Horizontal Grid lines */}
-                {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
-                  const y = chartHeight * (1 - ratio)
-                  return (
-                    <line key={i} x1="0" y1={y} x2={chartWidth} y2={y} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                  )
-                })}
+                  {/* Custom Progress Bar */}
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    <div className="flex justify-between text-[10px] font-semibold">
+                      <span className="text-[var(--text-secondary)]">Tasks Completed</span>
+                      <span className="text-emerald-400">{stats.projectProgress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+                      <div
+                        className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                        style={{ width: `${stats.projectProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                {/* SVG Curve Path Drawing */}
-                {/* Points: M x y C x1 y1, x2 y2, x y ... */}
-                {/* Point coordinates generated based on study hours array */}
-                <path
-                  d="M 10 100 C 45 80, 55 50, 77 56 C 99 62, 121 110, 143 103 C 165 96, 187 25, 209 28 C 231 31, 253 70, 275 63 C 297 56, 319 40, 341 42 C 363 44, 385 10, 410 14"
-                  fill="none"
-                  stroke="url(#lineGrad)"
-                  strokeWidth="2.5"
-                  filter="url(#glow)"
-                />
+                <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5">
+                  <span className="text-[9px] text-[var(--text-muted)] font-medium">
+                    15/20 modules completed
+                  </span>
+                  <Link
+                    href="/projects"
+                    className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-[var(--text-primary)] transition-all cursor-pointer select-none"
+                  >
+                    Continue
+                  </Link>
+                </div>
+              </GlassCard>
+            </motion.div>
+          </div>
+        </div>
 
-                {/* Filled Area beneath curve */}
-                <path
-                  d="M 10 100 C 45 80, 55 50, 77 56 C 99 62, 121 110, 143 103 C 165 96, 187 25, 209 28 C 231 31, 253 70, 275 63 C 297 56, 319 40, 341 42 C 363 44, 385 10, 410 14 L 410 140 L 10 140 Z"
-                  fill="url(#areaGrad)"
-                />
+        {/* 3. CONTINUE READING SECTION (Note cards with progress dials) */}
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center px-1">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
+              Continue Reading
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {notes.map((note) => (
+              <motion.div key={note.id} variants={itemVariants}>
+                <GlassCard className="p-4 flex flex-col justify-between min-h-[120px] border-white/5 bg-[#12131A]/60 hover:bg-[#12131A]/80 transition-colors">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <h4 className="text-xs font-bold text-[var(--text-primary)] truncate" title={note.title}>
+                      {note.title}
+                    </h4>
+                    <span className="text-[9px] text-[var(--text-muted)]">
+                      {note.category}
+                    </span>
+                  </div>
 
-                {/* Interaction Dots on peaks */}
-                <circle cx="209" cy="28" r="4.5" fill="var(--accent-purple)" stroke="white" strokeWidth="1.5" />
-                <circle cx="410" cy="14" r="4.5" fill="var(--accent-blue)" stroke="white" strokeWidth="1.5" />
+                  <div className="flex items-center justify-between mt-3 pt-2">
+                    {/* Small progress dial */}
+                    <div className="flex items-center gap-2 select-none">
+                      <div className="relative w-8 h-8 shrink-0">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle cx="16" cy="16" r="13" className="stroke-white/5 fill-transparent" strokeWidth="2.5" />
+                          <circle
+                            cx="16"
+                            cy="16"
+                            r="13"
+                            className="fill-transparent stroke-[var(--accent-blue)]"
+                            strokeWidth="2.5"
+                            strokeDasharray={2 * Math.PI * 13}
+                            strokeDashoffset={(2 * Math.PI * 13) * (1 - note.progress / 100)}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-[var(--text-primary)]">{note.progress}%</span>
+                        </div>
+                      </div>
+                    </div>
 
-                {/* Tooltip Overlay Mock */}
-                <g transform="translate(180, -2)">
-                  <rect x="0" y="0" width="60" height="24" rx="6" fill="rgba(0,0,0,0.8)" stroke="var(--border-glass)" strokeWidth="1" />
-                  <text x="30" y="15" fill="white" fontSize="9" fontWeight="bold" textAnchor="middle">8.0 hrs</text>
-                </g>
+                    <Link
+                      href="/notes"
+                      className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[var(--text-primary)] transition-all cursor-pointer select-none"
+                    >
+                      <ArrowRight size={12} />
+                    </Link>
+                  </div>
+                </GlassCard>
+              </motion.div>
+            ))}
+          </div>
+        </div>
 
-                {/* X Axis Labels */}
-                {studyHoursData.map((d, i) => {
-                  const segment = chartWidth / (studyHoursData.length - 1)
-                  const x = 10 + i * (segment - 3)
-                  return (
-                    <text key={i} x={x} y={chartHeight + 15} fill="var(--text-muted)" fontSize="9" textAnchor="middle">
-                      {d.day}
-                    </text>
-                  )
-                })}
-              </svg>
-            </div>
-          </GlassCard>
-        </motion.div>
-
-        {/* WIDGET 5: Learning Course Progress (Custom SVG) */}
+        {/* 4. COUNSELING SCHEDULE / PLACEMENT STRIP (Wide Strip at Bottom) */}
         <motion.div variants={itemVariants}>
-          <GlassCard className="h-full flex flex-col gap-4">
-            <div className="flex justify-between items-center pb-2 border-b border-[var(--border-glass)]">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">Class Progress</h3>
-              <Award size={14} className="text-[var(--text-muted)]" />
+          <div className="glass-card p-3.5 border-white/5 bg-[#12131A]/60 hover:bg-[#12131A]/80 transition-colors flex flex-col sm:flex-row justify-between items-center gap-3.5 rounded-2xl w-full">
+            <div className="flex items-center gap-3">
+              {/* Profile Avatar icon */}
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-black font-extrabold text-xs">
+                AI
+              </div>
+              <div className="flex flex-col text-center sm:text-left">
+                <span className="text-xs font-bold text-[var(--text-primary)]">
+                  Stripe Recruiting Bot (Virtual Interviewer)
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                  AI Recruiter Simulator • Behavioral & Technical Coding Assessment
+                </span>
+              </div>
             </div>
 
-            {/* Course Progress Columns */}
-            <div className="flex-1 flex flex-col justify-between gap-3 pt-2">
-              {coursesProgress.map(c => (
-                <div key={c.code} className="flex flex-col gap-1.5 p-2 bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-lg transition-colors cursor-pointer">
-                  <div className="flex justify-between items-center text-xs font-semibold">
-                    <div className="flex flex-col">
-                      <span className="text-[var(--text-primary)]">{c.code}</span>
-                      <span className="text-[9px] text-[var(--text-muted)] font-normal truncate max-w-[140px]">{c.name}</span>
+            <div className="flex items-center gap-3">
+              <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] font-bold text-amber-400 uppercase tracking-widest">
+                Scheduled Today
+              </span>
+              <Link
+                href="/placement"
+                className="px-3 py-1.5 bg-[var(--accent-blue)] text-black hover:bg-[var(--accent-blue)]/90 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer select-none"
+              >
+                Start Session
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+
+      </div>
+
+      {/* RIGHT SIDEBAR PANEL (Weekly Activities & To-Do List) */}
+      <div className="xl:col-span-1 flex flex-col gap-6">
+        
+        {/* A. WEEKLY ACTIVITIES: Donut Chart & Legend */}
+        <motion.div variants={itemVariants}>
+          <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+            <div className="border-b border-[var(--border-glass)] pb-2 select-none">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                Weekly Activities
+              </h3>
+            </div>
+
+            <div className="flex flex-col items-center justify-center py-4">
+              <div className="relative w-36 h-36 shrink-0">
+                {/* SVG Donut Circle */}
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="72" cy="72" r="56" className="stroke-white/5 fill-transparent" strokeWidth="12" />
+                  <circle
+                    cx="72"
+                    cy="72"
+                    r="56"
+                    className="fill-transparent stroke-[var(--accent-blue)]"
+                    strokeWidth="12"
+                    strokeDasharray={2 * Math.PI * 56}
+                    strokeDashoffset={(2 * Math.PI * 56) * (1 - 82 / 100)}
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    cx="72"
+                    cy="72"
+                    r="56"
+                    className="fill-transparent stroke-emerald-500/40"
+                    strokeWidth="12"
+                    strokeDasharray={2 * Math.PI * 56}
+                    strokeDashoffset={(2 * Math.PI * 56) * (1 - 65 / 100)}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-2xl font-bold text-[var(--text-primary)] leading-none">10</span>
+                  <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest mt-1">HRS/DAY</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Legend checklist */}
+            <div className="flex items-center justify-center gap-6 text-[10px] font-semibold text-[var(--text-secondary)] select-none">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded bg-white/20" />
+                <span>Targeted (10h)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded bg-[var(--accent-blue)]" />
+                <span>Achieved (8.2h)</span>
+              </div>
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        {/* B. YOUR TO-DO LIST (Pill list with colored circular icons) */}
+        <motion.div variants={itemVariants}>
+          <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+            <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                Your To-Do List
+              </h3>
+              <span className="text-[10px] text-[var(--accent-blue)] font-bold">
+                {todos.filter(t => !t.done).length} Pending
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+              {todos.map((todo) => (
+                <div
+                  key={todo.id}
+                  onClick={() => toggleTodo(todo.id)}
+                  className={cn(
+                    "flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.02] border transition-colors cursor-pointer select-none",
+                    todo.done ? "border-transparent opacity-45" : "border-white/5"
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0 pr-1">
+                    {/* Circle icon with background color */}
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${todo.color}15`, border: `1px solid ${todo.color}25` }}
+                    >
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: todo.color }} />
                     </div>
-                    <span className="text-[var(--accent-blue)]">{c.progress}%</span>
+
+                    <div className="flex flex-col min-w-0">
+                      <span className={cn(
+                        "text-xs font-bold text-[var(--text-primary)] truncate",
+                        todo.done && "line-through text-[var(--text-muted)]"
+                      )}>
+                        {todo.title}
+                      </span>
+                      <span className="text-[9px] text-[var(--text-muted)] mt-0.5">
+                        {todo.time}
+                      </span>
+                    </div>
                   </div>
-                  {/* Sleek Gradient progress line */}
-                  <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] rounded-full transition-all duration-500" style={{ width: `${c.progress}%` }} />
-                  </div>
+
+                  <button className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1 cursor-pointer shrink-0">
+                    {todo.done ? (
+                      <CheckCircle2 size={15} className="text-emerald-400" />
+                    ) : (
+                      <Circle size={15} className="text-white/20 hover:text-white/40" />
+                    )}
+                  </button>
                 </div>
               ))}
             </div>
+
+            <Link
+              href="/planner"
+              className="w-full flex items-center justify-center gap-1.5 py-2 mt-2 border border-dashed border-white/5 hover:border-[var(--accent-blue)] rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer select-none"
+            >
+              <Plus size={14} />
+              <span>Go to Study Planner</span>
+            </Link>
           </GlassCard>
         </motion.div>
 

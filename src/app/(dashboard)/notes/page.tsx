@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/Skeleton'
 import {
   BookOpen,
   Plus,
@@ -16,7 +17,12 @@ import {
   AlertCircle,
   HelpCircle,
   MessageSquare,
-  Loader2
+  Loader2,
+  Bold,
+  Italic,
+  List,
+  Heading,
+  Code
 } from 'lucide-react'
 
 interface Note {
@@ -36,8 +42,8 @@ interface QuizQuestion {
 }
 
 interface Flashcard {
-  front: string;
-  back: string;
+  front: string
+  back: string
 }
 
 interface ChatMessage {
@@ -74,7 +80,7 @@ export default function NotesPage() {
   // AI Panel Study Tab: 'summary' | 'flashcards' | 'quiz' | 'chat'
   const [studyTab, setStudyTab] = useState<'summary' | 'flashcards' | 'quiz' | 'chat'>('summary')
 
-  // AI Content Cache (linked to selected sources, or active note)
+  // AI Content Cache
   const [aiSummary, setAiSummary] = useState<string | null>(null)
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([])
@@ -180,7 +186,6 @@ export default function NotesPage() {
     setNoteContent(note.content)
     setAiSummary(note.ai_summary)
     
-    // Clear AI quiz/flashcard cached content on active note switch
     setFlashcards([])
     setQuizQuestions([])
     setQuizAnswers({})
@@ -201,7 +206,6 @@ export default function NotesPage() {
     setEditorMode('write')
   }
 
-  // Formatting Toolbar Helper Actions
   const insertTextAtCursor = (prefix: string, suffix: string = '') => {
     const textarea = document.getElementById('note-textarea') as HTMLTextAreaElement
     if (!textarea) return
@@ -216,14 +220,12 @@ export default function NotesPage() {
     
     setNoteContent(updatedContent)
     
-    // Re-focus and set cursor selection
     setTimeout(() => {
       textarea.focus()
       textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length)
     }, 50)
   }
 
-  // Save Note to Database
   const handleSaveNote = async () => {
     if (!noteTitle.trim()) return
 
@@ -238,7 +240,6 @@ export default function NotesPage() {
 
       if (user && !dbError) {
         if (activeNote && !activeNote.id.startsWith('mock-')) {
-          // Update note
           const { data, error } = await supabase
             .from('notes')
             .update(payload)
@@ -253,7 +254,6 @@ export default function NotesPage() {
             setActiveNote(updatedNote)
           }
         } else {
-          // Insert new note
           const { data, error } = await supabase
             .from('notes')
             .insert({ ...payload, user_id: user.id })
@@ -268,7 +268,6 @@ export default function NotesPage() {
           }
         }
       } else {
-        // Fallback Local Storage Mode
         if (activeNote) {
           const updated = notes.map(n => 
             n.id === activeNote.id 
@@ -297,7 +296,6 @@ export default function NotesPage() {
     }
   }
 
-  // Delete Note
   const handleDeleteNote = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm('Are you sure you want to delete this note?')) return
@@ -317,7 +315,6 @@ export default function NotesPage() {
       setNotes(updated)
       syncToLocalStorage(updated)
 
-      // Toggle first note or reset blank
       if (updated.length > 0) {
         loadNoteIntoWorkspace(updated[0])
       } else {
@@ -329,7 +326,6 @@ export default function NotesPage() {
     }
   }
 
-  // Source Checkbox toggle
   const toggleSource = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setSelectedSources(prev => ({
@@ -338,17 +334,14 @@ export default function NotesPage() {
     }))
   }
 
-  // Get active text based on checked sources
   const getSelectedSourceText = () => {
     const checkedNotes = notes.filter(n => selectedSources[n.id])
     if (checkedNotes.length === 0) {
-      // Fallback: use active workspace note if nothing checked
       return noteContent
     }
     return checkedNotes.map(n => `Title: ${n.title}\nContent: ${n.content}`).join('\n\n')
   }
 
-  // File Upload parsing
   const handleFileUploadClick = () => {
     fileInputRef.current?.click()
   }
@@ -369,9 +362,6 @@ export default function NotesPage() {
         }
         reader.readAsText(file)
       } else if (file.type === 'application/pdf') {
-        // Since Gemini Flash parses PDFs natively, we convert to base64 and feed it to a parse instruction
-        // Wait, for direct simplicity in frontend notes page, let's load text if TXT, or if PDF, let's read metadata or mock parsing if API keys are not active.
-        // Let's implement PDF file conversion and call the Resume API style base64 Gemini model parser!
         const reader = new FileReader()
         reader.onload = async () => {
           try {
@@ -394,9 +384,6 @@ export default function NotesPage() {
     }
   }
 
-  // AI ACTIONS
-
-  // 1. Summarize Action
   const handleSummarize = () => {
     const sourceText = getSelectedSourceText()
     if (!sourceText.trim()) return
@@ -418,7 +405,6 @@ export default function NotesPage() {
         } else if (data.summary) {
           setAiSummary(data.summary)
           
-          // Auto-save the summary to the active note if one is selected
           if (activeNote) {
             const { data: { user } } = await supabase.auth.getUser()
             if (user && !dbError && !activeNote.id.startsWith('mock-')) {
@@ -427,20 +413,17 @@ export default function NotesPage() {
                 .update({ ai_summary: data.summary })
                 .eq('id', activeNote.id)
             }
-            // Update local state note list
             setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, ai_summary: data.summary } : n))
             setActiveNote({ ...activeNote, ai_summary: data.summary })
           }
         }
       } catch (err: unknown) {
         console.error('Summary error:', err)
-        // Fallback mock summary
         setAiSummary('### Study Guide Summary\n- Analyzed source documents.\n- Key concept definitions found: working memory limit (7 items), Big O complexity benchmarks.\n- Focus review targets: worst-case complexities, LTM declarative facts.')
       }
     })
   }
 
-  // 2. Generate Quiz Action
   const handleGenerateQuiz = () => {
     const sourceText = getSelectedSourceText()
     if (!sourceText.trim()) return
@@ -467,7 +450,6 @@ export default function NotesPage() {
         }
       } catch (err: unknown) {
         console.error('Quiz error:', err)
-        // Fallback questions
         setQuizQuestions([
           {
             question: "What is the worst-case runtime complexity of a bubble sort algorithm?",
@@ -486,7 +468,6 @@ export default function NotesPage() {
     })
   }
 
-  // 3. Generate Flashcards Action
   const handleGenerateFlashcards = () => {
     const sourceText = getSelectedSourceText()
     if (!sourceText.trim()) return
@@ -513,7 +494,6 @@ export default function NotesPage() {
         }
       } catch (err: unknown) {
         console.error('Flashcard error:', err)
-        // Fallback cards
         setFlashcards([
           { front: "Define O(log n) complexity", back: "Logarithmic time complexity, where the size of the search dataset is halved at each stage. Example: Binary search." },
           { front: "What is iconic memory?", back: "The sensory memory subsystem dedicated to visual stimuli, retaining snapshots for milliseconds before fading." },
@@ -523,7 +503,6 @@ export default function NotesPage() {
     })
   }
 
-  // 4. Notes Chat (RAG Rerank query)
   const handleSendChat = () => {
     if (!chatInput.trim()) return
     const sourceText = getSelectedSourceText()
@@ -559,7 +538,6 @@ export default function NotesPage() {
     })
   }
 
-  // Simple Markdown inline parser helper
   const renderMarkdown = (markdownText: string) => {
     if (!markdownText) return null
 
@@ -571,7 +549,7 @@ export default function NotesPage() {
     const flushList = (key: string | number) => {
       if (inList && listItems.length > 0) {
         renderedElements.push(
-          <ul key={`list-${key}`} className="list-disc pl-5 my-2 space-y-1 text-xs text-[var(--text-secondary)]">
+          <ul key={`list-${key}`} className="list-disc pl-5 my-2 space-y-1.5 text-xs text-[var(--text-secondary)]">
             {listItems.map((item, idx) => (
               <li key={idx}>{parseInlineMarkdown(item)}</li>
             ))}
@@ -626,11 +604,72 @@ export default function NotesPage() {
     return <div className="space-y-0.5 select-text">{renderedElements}</div>
   }
 
-  // Count active checked sources
   const checkedSourcesCount = Object.values(selectedSources).filter(Boolean).length
 
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6 animate-pulse select-none">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-2 w-1/3">
+            <Skeleton className="h-8 w-full rounded-xl" />
+            <Skeleton className="h-4 w-2/3 rounded-lg" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-28 rounded-xl" />
+            <Skeleton className="h-10 w-24 rounded-xl" />
+          </div>
+        </div>
+
+        {/* 3 columns skeleton layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
+          {/* Sidebar skeleton */}
+          <div className="lg:col-span-3">
+            <GlassCard className="p-4 h-[60vh] flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+              <Skeleton className="h-5 w-2/3 rounded" />
+              <div className="flex flex-col gap-2.5 mt-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="p-2.5 bg-black/20 border border-white/5 rounded-xl flex flex-col gap-2">
+                    <Skeleton className="h-3.5 w-3/4 rounded" />
+                    <Skeleton className="h-2 w-1/2 rounded" />
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* Editor skeleton */}
+          <div className="lg:col-span-5">
+            <GlassCard className="p-5 h-[60vh] flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <Skeleton className="h-6 w-1/3 rounded" />
+                <Skeleton className="h-6 w-20 rounded" />
+              </div>
+              <Skeleton className="h-6 w-3/4 rounded" />
+              <Skeleton className="flex-1 rounded-xl" />
+            </GlassCard>
+          </div>
+
+          {/* Study panel skeleton */}
+          <div className="lg:col-span-4">
+            <GlassCard className="p-5 h-[60vh] flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
+              <div className="flex gap-2 border-b border-white/5 pb-2">
+                <Skeleton className="h-6 w-1/4 rounded" />
+                <Skeleton className="h-6 w-1/4 rounded" />
+                <Skeleton className="h-6 w-1/4 rounded" />
+              </div>
+              <Skeleton className="h-4 w-1/2 rounded" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="flex-1 rounded-xl" />
+            </GlassCard>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="fade-in-entry flex flex-col gap-6">
+    <div className="fade-in-entry flex flex-col gap-6 select-none">
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
@@ -655,7 +694,7 @@ export default function NotesPage() {
             variant="outline"
             onClick={handleFileUploadClick}
             disabled={uploadingFile}
-            className="flex items-center gap-1.5 border-[var(--border-glass)] hover:border-[var(--border-glass-active)] cursor-pointer text-xs"
+            className="flex items-center gap-1.5 border-[var(--border-glass)] hover:border-[var(--border-glass-active)] cursor-pointer text-xs font-bold rounded-xl"
           >
             {uploadingFile ? (
               <>
@@ -672,7 +711,7 @@ export default function NotesPage() {
 
           <Button
             onClick={handleNewNote}
-            className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white hover:opacity-95 text-xs shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer"
+            className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black hover:opacity-95 text-xs font-bold shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer rounded-xl"
           >
             <Plus size={14} />
             New Note
@@ -681,7 +720,7 @@ export default function NotesPage() {
       </div>
 
       {dbError && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-4 py-3 rounded-lg flex items-center gap-2 max-w-3xl leading-relaxed">
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-4 py-3 rounded-lg flex items-center gap-2 max-w-3xl leading-relaxed select-text">
           <AlertCircle size={15} className="shrink-0" />
           <span>{dbError}</span>
         </div>
@@ -692,7 +731,7 @@ export default function NotesPage() {
         
         {/* Left Column Explorer list (lg:col-span-3) */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <GlassCard className="p-4 flex flex-col gap-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          <GlassCard className="p-4 flex flex-col gap-4 max-h-[75vh] overflow-y-auto custom-scrollbar border-white/5 bg-[#12131A]/60">
             <div className="pb-2 border-b border-[var(--border-glass)] flex items-center justify-between select-none">
               <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Saved Notes</span>
               {checkedSourcesCount > 0 && (
@@ -721,7 +760,7 @@ export default function NotesPage() {
                     <div
                       key={item.id}
                       onClick={() => loadNoteIntoWorkspace(item)}
-                      className={`flex items-center justify-between p-2.5 bg-black/25 hover:bg-white/[0.02] border rounded-lg cursor-pointer transition-all group/item ${
+                      className={`flex items-center justify-between p-2.5 bg-black/25 hover:bg-[#171821]/80 border rounded-xl cursor-pointer transition-all group/item ${
                         isSelectedNote ? 'border-[var(--accent-blue)] bg-white/[0.01]' : 'border-white/5'
                       }`}
                     >
@@ -729,18 +768,29 @@ export default function NotesPage() {
                         {/* Custom source checkbox */}
                         <div
                           onClick={(e) => toggleSource(item.id, e)}
-                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' || e.key === 'Enter') {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              toggleSource(item.id, e as unknown as React.MouseEvent)
+                            }
+                          }}
+                          role="checkbox"
+                          aria-checked={isCheckedSource}
+                          tabIndex={0}
+                          aria-label="Use as study guide source"
+                          className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors outline-none focus-visible:border-[var(--accent-blue)] ${
                             isCheckedSource 
                               ? 'bg-[var(--accent-blue)] border-[var(--accent-blue)] text-black' 
                               : 'border-white/20 group-hover/item:border-white/40'
                           }`}
                           title="Use as Study Source"
                         >
-                          {isCheckedSource && <span className="text-[8px] font-bold">✓</span>}
+                          {isCheckedSource && <span className="text-[9px] font-bold">✓</span>}
                         </div>
                         
                         <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[120px] leading-tight">
+                          <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[120px] leading-tight">
                             {item.title}
                           </span>
                           <span className="text-[8px] text-[var(--text-muted)] mt-0.5 font-mono">
@@ -766,7 +816,7 @@ export default function NotesPage() {
 
         {/* Center Column Notepad Editor (lg:col-span-5) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
-          <GlassCard className="p-5 flex flex-col gap-4 min-h-[60vh]">
+          <GlassCard className="p-5 flex flex-col gap-4 min-h-[60vh] border-white/5 bg-[#12131A]/60">
             
             {/* Title & Editor tabs */}
             <div className="flex flex-col gap-3">
@@ -774,7 +824,7 @@ export default function NotesPage() {
                 <div className="flex items-center bg-white/5 border border-[var(--border-glass)] rounded-lg p-0.5">
                   <button
                     onClick={() => setEditorMode('write')}
-                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
                       editorMode === 'write' ? 'bg-white/10 text-[var(--accent-blue)]' : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
                   >
@@ -782,7 +832,7 @@ export default function NotesPage() {
                   </button>
                   <button
                     onClick={() => setEditorMode('preview')}
-                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
                       editorMode === 'preview' ? 'bg-white/10 text-[var(--accent-blue)]' : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
                   >
@@ -792,7 +842,7 @@ export default function NotesPage() {
 
                 <Button
                   onClick={handleSaveNote}
-                  className="flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold h-7 px-2.5 cursor-pointer text-[var(--text-primary)]"
+                  className="flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold h-7 px-3 cursor-pointer text-[var(--text-primary)] rounded-lg"
                 >
                   <Save size={12} />
                   Save Note
@@ -801,70 +851,72 @@ export default function NotesPage() {
 
               <input
                 type="text"
+                aria-label="Note Title"
                 placeholder="Note Title..."
                 value={noteTitle}
                 onChange={(e) => setNoteTitle(e.target.value)}
-                className="bg-transparent border-0 border-b border-transparent focus:border-[var(--border-glass)] outline-none text-md font-bold text-[var(--text-primary)] px-1 py-1 w-full"
+                className="bg-transparent border-0 border-b border-transparent focus:border-[var(--border-glass)] outline-none text-sm font-bold text-[var(--text-primary)] px-1 py-1 w-full select-text"
               />
             </div>
 
             {/* Content Area */}
             {editorMode === 'write' ? (
-              <div className="flex-1 flex flex-col gap-2">
+              <div className="flex-1 flex flex-col gap-2 select-text">
                 {/* Editor formatting toolbar */}
-                <div className="flex items-center gap-1.5 bg-black/25 border border-white/5 rounded-lg p-1 select-none overflow-x-auto scrollbar-none">
+                <div className="flex items-center gap-2 bg-[#090a0f] border border-white/5 rounded-xl p-1.5 select-none overflow-x-auto scrollbar-none shadow-inner">
                   <button
                     type="button"
                     onClick={() => insertTextAtCursor('## ', '')}
-                    className="p-1 rounded hover:bg-white/5 text-[10px] font-bold text-[var(--text-secondary)] hover:text-white min-w-[24px]"
+                    className="p-1 rounded-lg hover:bg-white/5 text-xs font-bold text-[var(--text-secondary)] hover:text-white flex items-center justify-center gap-0.5 min-w-[28px] cursor-pointer"
                     title="Heading"
                   >
-                    H2
+                    <Heading size={12} />
                   </button>
                   <button
                     type="button"
                     onClick={() => insertTextAtCursor('**', '**')}
-                    className="p-1 rounded hover:bg-white/5 text-[10px] font-bold text-[var(--text-secondary)] hover:text-white min-w-[24px]"
+                    className="p-1 rounded-lg hover:bg-white/5 text-xs font-bold text-[var(--text-secondary)] hover:text-white flex items-center justify-center gap-0.5 min-w-[28px] cursor-pointer"
                     title="Bold"
                   >
-                    B
+                    <Bold size={12} />
                   </button>
                   <button
                     type="button"
                     onClick={() => insertTextAtCursor('*', '*')}
-                    className="p-1 rounded hover:bg-white/5 text-[10px] font-bold text-[var(--text-secondary)] hover:text-white min-w-[24px]"
+                    className="p-1 rounded-lg hover:bg-white/5 text-xs font-bold text-[var(--text-secondary)] hover:text-white flex items-center justify-center gap-0.5 min-w-[28px] cursor-pointer"
                     title="Italic"
                   >
-                    I
+                    <Italic size={12} />
                   </button>
                   <button
                     type="button"
                     onClick={() => insertTextAtCursor('- ', '')}
-                    className="p-1 rounded hover:bg-white/5 text-[10px] font-bold text-[var(--text-secondary)] hover:text-white min-w-[24px]"
+                    className="p-1 rounded-lg hover:bg-white/5 text-xs font-bold text-[var(--text-secondary)] hover:text-white flex items-center justify-center gap-0.5 min-w-[28px] cursor-pointer"
                     title="Bullet List"
                   >
-                    List
+                    <List size={12} />
                   </button>
                   <button
                     type="button"
                     onClick={() => insertTextAtCursor('```\n', '\n```')}
-                    className="p-1 rounded hover:bg-white/5 text-[10px] font-bold text-[var(--text-secondary)] hover:text-white min-w-[24px]"
+                    className="p-1 rounded-lg hover:bg-white/5 text-xs font-bold text-[var(--text-secondary)] hover:text-white flex items-center justify-center gap-0.5 min-w-[28px] cursor-pointer"
                     title="Code Block"
                   >
-                    Code
+                    <Code size={12} />
                   </button>
                 </div>
 
                 <textarea
                   id="note-textarea"
+                  aria-label="Note content editor"
                   placeholder="Start writing notes using markdown..."
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
-                  className="w-full flex-1 min-h-[45vh] bg-black/15 border border-[var(--border-glass)] focus:border-white/10 rounded-lg p-3 text-xs text-[var(--text-secondary)] font-mono placeholder-[var(--text-muted)] outline-none resize-none leading-relaxed overflow-y-auto custom-scrollbar"
+                  className="w-full flex-1 min-h-[45vh] bg-black/15 border border-[var(--border-glass)] focus:border-white/10 rounded-xl p-3 text-xs text-[var(--text-secondary)] font-mono placeholder-[var(--text-muted)] outline-none resize-none leading-relaxed overflow-y-auto custom-scrollbar"
                 />
               </div>
             ) : (
-              <div className="w-full flex-1 min-h-[50vh] max-h-[55vh] overflow-y-auto bg-black/15 border border-[var(--border-glass)] rounded-lg p-4 custom-scrollbar">
+              <div className="w-full flex-1 min-h-[50vh] max-h-[55vh] overflow-y-auto bg-[#090a0f] border border-[var(--border-glass)] rounded-xl p-4 custom-scrollbar select-text">
                 {renderMarkdown(noteContent)}
               </div>
             )}
@@ -873,13 +925,13 @@ export default function NotesPage() {
 
         {/* Right Column Study Panel (lg:col-span-4) */}
         <div className="lg:col-span-4 flex flex-col gap-4">
-          <GlassCard className="p-5 flex flex-col gap-4 min-h-[60vh]">
+          <GlassCard className="p-5 flex flex-col gap-4 min-h-[60vh] border-white/5 bg-[#12131A]/60">
             
             {/* AI tab selector bar */}
             <div className="flex items-center border-b border-[var(--border-glass)] pb-2 overflow-x-auto gap-2 scrollbar-none select-none">
               <button
                 onClick={() => setStudyTab('summary')}
-                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
                   studyTab === 'summary'
                     ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:text-white'
@@ -890,7 +942,7 @@ export default function NotesPage() {
 
               <button
                 onClick={() => setStudyTab('flashcards')}
-                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
                   studyTab === 'flashcards'
                     ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:text-white'
@@ -901,7 +953,7 @@ export default function NotesPage() {
 
               <button
                 onClick={() => setStudyTab('quiz')}
-                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
                   studyTab === 'quiz'
                     ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:text-white'
@@ -912,7 +964,7 @@ export default function NotesPage() {
 
               <button
                 onClick={() => setStudyTab('chat')}
-                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
                   studyTab === 'chat'
                     ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:text-white'
@@ -923,8 +975,8 @@ export default function NotesPage() {
             </div>
 
             {/* AI Source text indicator alerts */}
-            <div className="bg-white/5 border border-white/5 rounded-lg px-3 py-1.5 flex items-center justify-between text-[9px] select-none text-[var(--text-secondary)]">
-              <span>RAG Sources: {checkedSourcesCount > 0 ? `${checkedSourcesCount} notes selected` : 'Active notepad note'}</span>
+            <div className="bg-white/5 border border-white/5 rounded-xl px-3 py-2 flex items-center justify-between text-[9px] select-none text-[var(--text-secondary)] font-semibold">
+              <span>Sources: {checkedSourcesCount > 0 ? `${checkedSourcesCount} selected` : 'Active note'}</span>
               <Sparkles size={11} className="text-[var(--accent-blue)]" />
             </div>
 
@@ -937,7 +989,7 @@ export default function NotesPage() {
                   {isPending && !aiSummary ? (
                     <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3">
                       <Loader2 className="animate-spin text-[var(--accent-blue)]" size={24} />
-                      <span className="text-[10px] text-[var(--text-muted)]">Summarizing note key topics...</span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Summarizing note key topics...</span>
                     </div>
                   ) : aiSummary ? (
                     <div className="flex-1 overflow-y-auto max-h-[42vh] pr-1 custom-scrollbar text-xs">
@@ -945,7 +997,7 @@ export default function NotesPage() {
                       <Button
                         onClick={handleSummarize}
                         disabled={isPending}
-                        className="w-full mt-4 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 text-[10px] font-bold border border-white/10 h-7 select-none cursor-pointer"
+                        className="w-full mt-4 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 text-[10px] font-bold border border-white/10 h-8 select-none cursor-pointer rounded-lg"
                       >
                         {isPending ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
                         Regenerate Summary
@@ -954,11 +1006,11 @@ export default function NotesPage() {
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-3 select-none">
                       <FileText size={28} className="text-[var(--text-muted)]" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-xs">No AI summary generated for this note yet.</span>
+                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">No AI summary generated for this note yet.</span>
                       <Button
                         onClick={handleSummarize}
                         disabled={isPending}
-                        className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-[10px] font-bold shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer px-4 py-1.5 mt-2 h-7"
+                        className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-[10px] font-bold shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer px-4 py-1.5 mt-2 h-8 rounded-lg"
                       >
                         {isPending ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
                         Generate Summary
@@ -974,7 +1026,7 @@ export default function NotesPage() {
                   {isPending && flashcards.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3">
                       <Loader2 className="animate-spin text-[var(--accent-blue)]" size={24} />
-                      <span className="text-[10px] text-[var(--text-muted)]">Generating study cards...</span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Generating study cards...</span>
                     </div>
                   ) : flashcards.length > 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center gap-4">
@@ -984,7 +1036,6 @@ export default function NotesPage() {
                         className="w-full h-44 cursor-pointer relative"
                         style={{ perspective: '1000px' }}
                       >
-                        {/* Flipping glassmorphic card */}
                         <motion.div
                           className="w-full h-full rounded-xl border border-[var(--border-glass)] bg-black/40 flex items-center justify-center p-5 text-center shadow-lg"
                           animate={{ rotateY: isCardFlipped ? 180 : 0 }}
@@ -996,8 +1047,8 @@ export default function NotesPage() {
                             className="absolute inset-0 p-5 flex flex-col justify-center items-center select-text backface-hidden"
                             style={{ backfaceVisibility: 'hidden' }}
                           >
-                            <span className="text-[8px] font-bold text-[var(--accent-blue)] uppercase tracking-widest mb-2">Question</span>
-                            <p className="text-xs font-semibold text-[var(--text-primary)] leading-normal">
+                            <span className="text-[8px] font-extrabold text-[var(--accent-blue)] uppercase tracking-widest mb-2">Question</span>
+                            <p className="text-xs font-bold text-[var(--text-primary)] leading-normal">
                               {flashcards[currentCardIndex].front}
                             </p>
                           </div>
@@ -1010,8 +1061,8 @@ export default function NotesPage() {
                               transform: 'rotateY(180deg)'
                             }}
                           >
-                            <span className="text-[8px] font-bold text-[var(--accent-purple)] uppercase tracking-widest mb-2">Answer</span>
-                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            <span className="text-[8px] font-extrabold text-[var(--accent-purple)] uppercase tracking-widest mb-2">Answer</span>
+                            <p className="text-xs text-[var(--text-secondary)] font-medium leading-relaxed">
                               {flashcards[currentCardIndex].back}
                             </p>
                           </div>
@@ -1028,11 +1079,11 @@ export default function NotesPage() {
                             setCurrentCardIndex(prev => prev - 1)
                             setIsCardFlipped(false)
                           }}
-                          className="text-[10px] border-[var(--border-glass)] cursor-pointer"
+                          className="text-[10px] border-[var(--border-glass)] cursor-pointer rounded-lg"
                         >
                           Prev
                         </Button>
-                        <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                        <span className="text-[10px] font-mono text-[var(--text-muted)] font-semibold">
                           {currentCardIndex + 1} of {flashcards.length}
                         </span>
                         <Button
@@ -1043,7 +1094,7 @@ export default function NotesPage() {
                             setCurrentCardIndex(prev => prev + 1)
                             setIsCardFlipped(false)
                           }}
-                          className="text-[10px] border-[var(--border-glass)] cursor-pointer"
+                          className="text-[10px] border-[var(--border-glass)] cursor-pointer rounded-lg"
                         >
                           Next
                         </Button>
@@ -1052,7 +1103,7 @@ export default function NotesPage() {
                       <Button
                         onClick={handleGenerateFlashcards}
                         disabled={isPending}
-                        className="w-full mt-2 bg-white/5 hover:bg-white/10 text-[10px] font-bold border border-white/10 h-7 cursor-pointer flex items-center justify-center gap-1.5"
+                        className="w-full mt-2 bg-white/5 hover:bg-white/10 text-[10px] font-bold border border-white/10 h-8 cursor-pointer flex items-center justify-center gap-1.5 rounded-lg"
                       >
                         {isPending && <Loader2 size={11} className="animate-spin" />}
                         Regenerate Cards
@@ -1061,11 +1112,11 @@ export default function NotesPage() {
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-3">
                       <HelpCircle size={28} className="text-[var(--text-muted)]" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-xs">No active study cards generated.</span>
+                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">No active study cards generated.</span>
                       <Button
                         onClick={handleGenerateFlashcards}
                         disabled={isPending}
-                        className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-[10px] font-bold shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer px-4 py-1.5 mt-2 h-7"
+                        className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-[10px] font-bold shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer px-4 py-1.5 mt-2 h-8 rounded-lg"
                       >
                         {isPending ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
                         Generate Flashcards
@@ -1081,7 +1132,7 @@ export default function NotesPage() {
                   {isPending && quizQuestions.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3">
                       <Loader2 className="animate-spin text-[var(--accent-blue)]" size={24} />
-                      <span className="text-[10px] text-[var(--text-muted)]">Creating quiz questions...</span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Creating quiz questions...</span>
                     </div>
                   ) : quizQuestions.length > 0 ? (
                     <div className="flex-1 flex flex-col gap-4 h-[42vh] overflow-y-auto pr-1 custom-scrollbar">
@@ -1092,12 +1143,11 @@ export default function NotesPage() {
                         return (
                           <div
                             key={qIdx}
-                            className="p-3 bg-black/25 border border-white/5 rounded-lg flex flex-col gap-2.5"
+                            className="p-3 bg-[#090a0f] border border-white/5 rounded-xl flex flex-col gap-2.5"
                           >
                             <span className="text-[10px] font-bold text-[var(--accent-blue)]">Question {qIdx + 1}</span>
-                            <p className="text-xs font-semibold text-[var(--text-primary)] leading-normal">{q.question}</p>
+                            <p className="text-xs font-bold text-[var(--text-primary)] leading-normal">{q.question}</p>
 
-                            {/* Options list */}
                             <div className="flex flex-col gap-2">
                               {q.options.map((opt, optIdx) => {
                                 const isSelected = selectedAnswer === optIdx
@@ -1113,13 +1163,13 @@ export default function NotesPage() {
                                     className={`p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-colors ${
                                       showQuizResults
                                         ? isThisCorrect
-                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium'
+                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-semibold'
                                           : isSelected
                                           ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                                          : 'border-white/5 text-[var(--text-secondary)]'
+                                          : 'border-white/5 text-[var(--text-secondary)] font-medium'
                                         : isSelected
-                                        ? 'border-[var(--accent-blue)] bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] font-medium'
-                                        : 'border-white/5 bg-black/10 hover:bg-white/[0.01] text-[var(--text-secondary)]'
+                                        ? 'border-[var(--accent-blue)] bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] font-bold'
+                                        : 'border-white/5 bg-black/10 hover:bg-white/[0.01] text-[var(--text-secondary)] font-medium'
                                     }`}
                                   >
                                     {opt}
@@ -1128,12 +1178,11 @@ export default function NotesPage() {
                               })}
                             </div>
 
-                            {/* Question Correction Details */}
                             {showQuizResults && (
-                              <div className={`text-[10px] mt-1 p-2 rounded leading-relaxed border ${
-                                isCorrect ? 'bg-emerald-950/10 border-emerald-500/10 text-emerald-500/90' : 'bg-red-950/10 border-red-500/10 text-red-400'
+                              <div className={`text-[10px] mt-1 p-2.5 rounded-lg leading-relaxed border ${
+                                isCorrect ? 'bg-emerald-950/10 border-emerald-500/10 text-emerald-500/90 font-medium' : 'bg-red-950/10 border-red-500/10 text-red-400 font-medium'
                               }`}>
-                                <strong className="font-bold block mb-0.5">{isCorrect ? 'Correct!' : 'Incorrect'}</strong>
+                                <strong className="font-extrabold block mb-0.5">{isCorrect ? 'Correct!' : 'Incorrect'}</strong>
                                 {q.explanation}
                               </div>
                             )}
@@ -1141,7 +1190,6 @@ export default function NotesPage() {
                         )
                       })}
 
-                      {/* Quiz controls row */}
                       {!showQuizResults ? (
                         <Button
                           onClick={() => {
@@ -1151,7 +1199,7 @@ export default function NotesPage() {
                             }
                             setShowQuizResults(true)
                           }}
-                          className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-xs font-semibold py-2 shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer h-8 select-none"
+                          className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-2 shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer h-8 select-none rounded-lg"
                         >
                           Submit Answers
                         </Button>
@@ -1163,14 +1211,14 @@ export default function NotesPage() {
                               setShowQuizResults(false)
                             }}
                             variant="outline"
-                            className="flex-1 border-[var(--border-glass)] hover:border-white/10 text-[10px] py-1.5 h-8 select-none cursor-pointer"
+                            className="flex-1 border-[var(--border-glass)] hover:border-white/10 text-[10px] py-1.5 h-8 select-none cursor-pointer rounded-lg font-bold"
                           >
                             Retry Quiz
                           </Button>
                           <Button
                             onClick={handleGenerateQuiz}
                             disabled={isPending}
-                            className="flex-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-[10px] font-bold border-0 cursor-pointer h-8 select-none"
+                            className="flex-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-[10px] font-bold border-0 cursor-pointer h-8 select-none rounded-lg"
                           >
                             New Quiz
                           </Button>
@@ -1180,11 +1228,11 @@ export default function NotesPage() {
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-3 select-none">
                       <HelpCircle size={28} className="text-[var(--text-muted)]" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-xs">No practice tests created for this note.</span>
+                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">No practice tests created for this note.</span>
                       <Button
                         onClick={handleGenerateQuiz}
                         disabled={isPending}
-                        className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-[10px] font-bold shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer px-4 py-1.5 mt-2 h-7"
+                        className="flex items-center gap-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-[10px] font-bold shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer px-4 py-1.5 mt-2 h-8 rounded-lg"
                       >
                         {isPending ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
                         Generate Practice Quiz
@@ -1197,12 +1245,11 @@ export default function NotesPage() {
               {/* TAB 4: CHAT RAG */}
               {studyTab === 'chat' && (
                 <div className="flex-1 flex flex-col gap-3">
-                  {/* Chat messages viewport */}
-                  <div className="flex-1 bg-black/20 border border-[var(--border-glass)] rounded-lg p-3 flex flex-col gap-3.5 h-[34vh] overflow-y-auto custom-scrollbar select-text">
+                  <div className="flex-1 bg-[#090a0f] border border-[var(--border-glass)] rounded-xl p-3 flex flex-col gap-3.5 h-[34vh] overflow-y-auto custom-scrollbar select-text">
                     {chatMessages.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center text-center p-4 gap-2 select-none">
                         <MessageSquare size={22} className="text-[var(--text-muted)]" />
-                        <span className="text-[10px] text-[var(--text-muted)] max-w-[160px]">
+                        <span className="text-[10px] text-[var(--text-muted)] max-w-[160px] font-semibold">
                           Ask questions about your selected notes. AI will extract answers using only your study text.
                         </span>
                       </div>
@@ -1212,11 +1259,11 @@ export default function NotesPage() {
                           key={idx}
                           className={`flex flex-col gap-1 text-[11px] max-w-[85%] leading-relaxed ${
                             msg.role === 'user'
-                              ? 'self-end bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 p-2.5 rounded-xl rounded-tr-none text-[var(--text-primary)]'
-                              : 'self-start bg-white/5 border border-white/5 p-2.5 rounded-xl rounded-tl-none text-[var(--text-secondary)]'
+                              ? 'self-end bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 p-2.5 rounded-xl rounded-tr-none text-[var(--text-primary)] font-semibold'
+                              : 'self-start bg-white/5 border border-white/5 p-2.5 rounded-xl rounded-tl-none text-[var(--text-secondary)] font-medium'
                           }`}
                         >
-                          <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">
+                          <span className="text-[8px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-0.5">
                             {msg.role === 'user' ? 'Student' : 'Note Copilot'}
                           </span>
                           <p>{msg.content}</p>
@@ -1230,7 +1277,6 @@ export default function NotesPage() {
                     )}
                   </div>
 
-                  {/* Chat input controls */}
                   <div className="flex gap-2 select-none">
                     <input
                       type="text"
@@ -1239,12 +1285,12 @@ export default function NotesPage() {
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
                       disabled={isPending}
-                      className="flex-1 bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none transition-colors"
+                      className="flex-1 bg-black/45 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none transition-all"
                     />
                     <Button
                       onClick={handleSendChat}
                       disabled={isPending || !chatInput.trim()}
-                      className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white hover:opacity-95 text-xs font-semibold px-3 py-1.5 h-8 border-0 cursor-pointer"
+                      className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black hover:opacity-95 text-xs font-bold px-4 py-2 h-8.5 border-0 cursor-pointer rounded-xl"
                     >
                       Ask
                     </Button>

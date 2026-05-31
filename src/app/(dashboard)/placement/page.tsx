@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/Skeleton'
 import {
   GraduationCap,
   Code2,
@@ -22,7 +23,13 @@ import {
   Loader2,
   Award,
   RotateCcw,
-  FileText
+  FileText,
+  Video,
+  Mic,
+  VideoOff,
+  MicOff,
+  User,
+  Volume2
 } from 'lucide-react'
 
 // Score record type
@@ -115,6 +122,10 @@ export default function PlacementPage() {
   const [dialogHistory, setDialogHistory] = useState<SimulatorMessage[]>([])
   const [candidateResponse, setCandidateResponse] = useState('')
   
+  // Call controls
+  const [isVideoOn, setIsVideoOn] = useState(true)
+  const [isMicOn, setIsMicOn] = useState(true)
+
   // Final simulator summary statistics
   const [simulationResult, setSimulationResult] = useState<{
     overallScore: number
@@ -168,7 +179,6 @@ export default function PlacementPage() {
         setScores([])
       }
     } else {
-      // Mock history log
       const mockScores: ScoreRecord[] = [
         {
           id: 'mock-1',
@@ -202,7 +212,6 @@ export default function PlacementPage() {
     localStorage.setItem('campusos-placement-scores', JSON.stringify(list))
   }
 
-  // Handle attempt deletion
   const handleDeleteAttempt = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm('Are you sure you want to delete this score record?')) return
@@ -227,7 +236,6 @@ export default function PlacementPage() {
     }
   }
 
-  // --- SAVE SCORE CONTROLLER ---
   const saveScoreRecord = async (
     type: 'aptitude' | 'dsa' | 'hr' | 'interview_simulator',
     topic: string,
@@ -257,7 +265,6 @@ export default function PlacementPage() {
           setScores(prev => [data as ScoreRecord, ...prev])
         }
       } else {
-        // Fallback local save
         const newRecord: ScoreRecord = {
           id: `local-${Date.now()}`,
           ...scorePayload,
@@ -272,7 +279,6 @@ export default function PlacementPage() {
     }
   }
 
-  // --- MODULE 1: APTITUDE CONTROLLER ---
   const handleGenerateAptitude = () => {
     setAptitudeQuestions([])
     setAptitudeAnswers({})
@@ -296,7 +302,6 @@ export default function PlacementPage() {
         }
       } catch (err: unknown) {
         console.error('Aptitude generating error:', err)
-        // Fallback Quant
         setAptitudeQuestions([
           {
             question: "A train running at the speed of 60 km/hr crosses a pole in 9 seconds. What is the length of the train?",
@@ -330,12 +335,9 @@ export default function PlacementPage() {
 
     const finalPercent = Math.round((correctCount / aptitudeQuestions.length) * 100)
     setShowAptitudeResults(true)
-    
-    // Save to DB
     saveScoreRecord('aptitude', `${aptitudeTopic} Aptitude Practice`, finalPercent, aptitudeQuestions.length, null)
   }
 
-  // --- MODULE 2: DSA CONTROLLER ---
   const handleGenerateDsa = () => {
     setDsaProblems([])
     setSelectedProblemIndex(null)
@@ -358,7 +360,6 @@ export default function PlacementPage() {
         }
       } catch (err: unknown) {
         console.error('DSA generation error:', err)
-        // Fallback problems
         setDsaProblems([
           {
             title: "Two Sum",
@@ -381,21 +382,17 @@ export default function PlacementPage() {
     })
   }
 
-  // Mark DSA coding problem solved
   const toggleDsaSolved = (problemTitle: string) => {
     const updated = {
       ...completedDsaCount,
       [problemTitle]: !completedDsaCount[problemTitle]
     }
     setCompletedDsaCount(updated)
-    
-    // Save record to DB history
     if (updated[problemTitle]) {
       saveScoreRecord('dsa', `DSA: ${problemTitle}`, 100.0, null, null)
     }
   }
 
-  // --- MODULE 3: HR BEHAVIORAL CONTROLLER ---
   const handleGenerateHrQuestions = () => {
     setHrQuestions([])
     setExpandedStarQuestionIndex(null)
@@ -417,14 +414,13 @@ export default function PlacementPage() {
         }
       } catch (err: unknown) {
         console.error('HR questions error:', err)
-        // Fallback HR Behavioral questions
         setHrQuestions([
           {
             question: "Describe a conflict you had with a team member during a university project and how you resolved it.",
             starModel: {
-              situation: "A team member stopped contributing to a final semester machine learning project due to overlapping schedule constraints.",
+              situation: "A team member stopped contributing to a final semester machine learning project due to schedule constraints.",
               task: "We needed to complete the feature engineering pipeline and model training within 5 days to preserve our grade weights.",
-              action: "I scheduled a 1-on-1 calls call to understand their workload. We compromised by shifting their duties to code documentation and visual slides which fit their hours, while I took over features.",
+              action: "I scheduled a 1-on-1 call to understand their workload. We compromised by shifting their duties to code documentation and visual slides which fit their hours, while I took over features.",
               result: "We integrated the model pipeline in time, scored an A grade, and maintained a collaborative friendly working relationship."
             },
             idealOutline: "Outline:\n1. State the project details and the issue neutrally (no personal blaming).\n2. Highlight your initiative to communicate directly and compromise.\n3. Show how workload re-distribution balanced capabilities.\n4. Close with key learning metrics (communication is prior to execution)."
@@ -444,7 +440,6 @@ export default function PlacementPage() {
     })
   }
 
-  // --- MODULE 4: MOCK INTERVIEW SIMULATOR ---
   const handleStartInterview = () => {
     setDialogHistory([])
     setCandidateResponse('')
@@ -517,7 +512,6 @@ export default function PlacementPage() {
         }
       } catch (err: unknown) {
         console.error('Simulator respond error:', err)
-        // Recruiter bot fallback response
         setDialogHistory(prev => [
           ...prev,
           {
@@ -554,7 +548,6 @@ export default function PlacementPage() {
           setSimulationResult(data)
           setSimulatorStatus('completed')
           
-          // Save to database
           saveScoreRecord('interview_simulator', `${jobRole} Simulation Interview`, data.overallScore, null, {
             summary: data.summary,
             strengths: data.strengths,
@@ -563,12 +556,11 @@ export default function PlacementPage() {
         }
       } catch (err: unknown) {
         console.error('Evaluation error:', err)
-        // Fallback final card
         const mockResult = {
           overallScore: 82,
           strengths: ["Structured STAR reasoning", "Clear technical context references", "Proactive communication style"],
           weaknesses: ["Estimating buffers details", "Recruiter greeting tone pacing", "Code complexity optimizations"],
-          summary: "Outstanding interview simulation. Candidate demonstrated firm logic andSTAR structural formats. Refine delivery speed and Big O optimization explanations."
+          summary: "Outstanding interview simulation. Candidate demonstrated firm logic and STAR structural formats. Refine delivery speed and Big O optimization explanations."
         }
         setSimulationResult(mockResult)
         setSimulatorStatus('completed')
@@ -595,7 +587,6 @@ export default function PlacementPage() {
   const completedDsaCountDb = scores.filter(s => s.type === 'dsa').length
   const totalSolvedDSA = Object.keys(completedDsaCount).length + completedDsaCountDb
 
-  // Placement readiness percentage rating
   const readinessRating = Math.min(
     Math.round(
       (avgSimulatorScore * 0.4) + 
@@ -606,7 +597,7 @@ export default function PlacementPage() {
   )
 
   return (
-    <div className="fade-in-entry flex flex-col gap-6">
+    <div className="fade-in-entry flex flex-col gap-6 select-none">
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
@@ -615,13 +606,13 @@ export default function PlacementPage() {
             Placement Preparation
           </h1>
           <p className="text-[var(--text-secondary)] text-sm">
-            Practice quantitative aptitude quizes, review coding DSA problems, read HR behavioral guidelines, and run mock interview simulations.
+            Practice quantitative aptitude quizzes, review coding DSA problems, read HR behavioral guidelines, and run mock interview simulations.
           </p>
         </div>
       </div>
 
       {dbError && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-4 py-3 rounded-lg flex items-center gap-2 max-w-3xl leading-relaxed">
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-4 py-3 rounded-lg flex items-center gap-2 max-w-3xl leading-relaxed select-text">
           <AlertCircle className="shrink-0" size={15} />
           <span>{dbError}</span>
         </div>
@@ -634,7 +625,7 @@ export default function PlacementPage() {
         <div className="lg:col-span-3 flex flex-col gap-4">
           
           {/* Preparation metrics */}
-          <GlassCard className="p-5 flex flex-col gap-4.5 select-none">
+          <GlassCard className="p-5 flex flex-col gap-4.5 border-white/5 bg-[#12131A]/60">
             <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Prep Metrics</span>
             
             {/* Readiness circular dial */}
@@ -655,28 +646,27 @@ export default function PlacementPage() {
               </div>
             </div>
 
-            <hr className="border-[var(--border-glass)]" />
+            <hr className="border-white/5" />
 
-            {/* Sub stats row */}
             <div className="flex flex-col gap-3 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-[var(--text-muted)]">Avg Interview Score:</span>
-                <span className="font-semibold text-[var(--text-primary)]">{avgSimulatorScore}%</span>
+                <span className="text-[var(--text-muted)] font-semibold">Avg Interview Score:</span>
+                <span className="font-bold text-[var(--text-primary)]">{avgSimulatorScore}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[var(--text-muted)]">Avg Aptitude Score:</span>
-                <span className="font-semibold text-[var(--text-primary)]">{avgAptitudeScore}%</span>
+                <span className="text-[var(--text-muted)] font-semibold">Avg Aptitude Score:</span>
+                <span className="font-bold text-[var(--text-primary)]">{avgAptitudeScore}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[var(--text-muted)]">DSA Solved:</span>
-                <span className="font-semibold text-[var(--text-primary)]">{totalSolvedDSA} problems</span>
+                <span className="text-[var(--text-muted)] font-semibold">DSA Solved:</span>
+                <span className="font-bold text-[var(--text-primary)]">{totalSolvedDSA} solved</span>
               </div>
             </div>
           </GlassCard>
 
           {/* Scores History panel */}
-          <GlassCard className="p-4 flex flex-col gap-4 max-h-[48vh] overflow-y-auto custom-scrollbar">
-            <div className="pb-2 border-b border-[var(--border-glass)] flex items-center justify-between select-none">
+          <GlassCard className="p-4 flex flex-col gap-4 max-h-[48vh] overflow-y-auto custom-scrollbar border-white/5 bg-[#12131A]/60">
+            <div className="pb-2 border-b border-[var(--border-glass)] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <History size={14} className="text-[var(--text-secondary)]" />
                 <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Attempt History</span>
@@ -684,22 +674,32 @@ export default function PlacementPage() {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 size={16} className="animate-spin text-[var(--accent-blue)]" />
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="flex items-center justify-between p-2.5 bg-white/5 border border-white/5 rounded-xl">
+                    <div className="flex items-center gap-2 w-full">
+                      <Skeleton className="w-4 h-4 rounded-md shrink-0 animate-pulse" />
+                      <div className="flex flex-col gap-1 w-3/4">
+                        <Skeleton className="w-2/3 h-2.5 rounded" />
+                        <Skeleton className="w-1/3 h-1.5 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : scores.length === 0 ? (
-              <div className="py-6 text-center text-[10px] text-[var(--text-muted)] select-none">
-                No attempt records log found. Start practice practice.
+              <div className="py-6 text-center text-[10px] text-[var(--text-muted)] font-semibold">
+                No attempt records log found.
               </div>
             ) : (
               <div className="flex flex-col gap-2.5 select-text">
                 {scores.map((log) => (
                   <div
                     key={log.id}
-                    className="p-2.5 bg-black/25 hover:bg-white/[0.02] border border-white/5 rounded-lg flex items-center justify-between group/item transition-colors"
+                    className="p-2.5 bg-black/25 hover:bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between group/item transition-colors"
                   >
                     <div className="flex flex-col min-w-0 pr-2">
-                      <span className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[120px]">{log.topic}</span>
+                      <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[120px]">{log.topic}</span>
                       <span className="text-[8px] text-[var(--text-muted)] font-mono mt-0.5 capitalize">
                         {log.type.replace('_', ' ')} • {new Date(log.created_at).toLocaleDateString()}
                       </span>
@@ -726,7 +726,7 @@ export default function PlacementPage() {
 
         {/* Center/Right Main Preparation Hub (lg:col-span-9) */}
         <div className="lg:col-span-9 flex flex-col gap-4">
-          <GlassCard className="p-6 min-h-[60vh] flex flex-col gap-6">
+          <GlassCard className="p-6 min-h-[60vh] flex flex-col gap-6 border-white/5 bg-[#12131A]/60">
             
             {/* Top Workspace Tab Navs */}
             <div className="flex items-center border-b border-[var(--border-glass)] pb-2 overflow-x-auto gap-2 scrollbar-none select-none">
@@ -800,26 +800,29 @@ export default function PlacementPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <select
-                        value={aptitudeTopic}
-                        onChange={(e) => setAptitudeTopic(e.target.value)}
-                        className="bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-lg px-2.5 py-1 text-[var(--text-primary)] outline-none cursor-pointer"
-                      >
-                        <option value="Quantitative">Quantitative Aptitude</option>
-                        <option value="Logical Reasoning">Logical Reasoning</option>
-                        <option value="Verbal Ability">Verbal Ability</option>
-                        <option value="Data Interpretation">Data Interpretation</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={aptitudeTopic}
+                          onChange={(e) => setAptitudeTopic(e.target.value)}
+                          className="bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-xl px-3 py-1.5 pr-8 text-[var(--text-primary)] outline-none cursor-pointer appearance-none font-bold"
+                        >
+                          <option value="Quantitative">Quantitative Aptitude</option>
+                          <option value="Logical Reasoning">Logical Reasoning</option>
+                          <option value="Verbal Ability">Verbal Ability</option>
+                          <option value="Data Interpretation">Data Interpretation</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-2.5 text-[var(--text-muted)] pointer-events-none" size={12} />
+                      </div>
 
                       <Button
                         onClick={handleGenerateAptitude}
                         disabled={isPending}
-                        className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-xs py-1.5 h-8 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)]"
+                        className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-1.5 px-4 h-8.5 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)] rounded-xl"
                       >
                         {isPending ? (
-                          <span className="flex items-center gap-1">
-                            <Loader2 size={12} className="animate-spin" />
-                            Generating...
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 size={13} className="animate-spin text-black" />
+                            <span>Generating...</span>
                           </span>
                         ) : (
                           'Request Quiz'
@@ -828,7 +831,6 @@ export default function PlacementPage() {
                     </div>
                   </div>
 
-                  {/* Aptitude Question list */}
                   {aptitudeQuestions.length > 0 ? (
                     <div className="flex flex-col gap-4 mt-2">
                       {aptitudeQuestions.map((q, idx) => {
@@ -838,12 +840,11 @@ export default function PlacementPage() {
                         return (
                           <div
                             key={idx}
-                            className="p-4 bg-black/20 border border-white/5 rounded-lg flex flex-col gap-3"
+                            className="p-4 bg-black/20 border border-white/5 rounded-xl flex flex-col gap-3"
                           >
                             <span className="text-[10px] font-bold text-[var(--accent-purple)] uppercase tracking-wider">Question {idx + 1}</span>
-                            <p className="text-xs font-semibold text-[var(--text-primary)] leading-normal">{q.question}</p>
+                            <p className="text-xs font-bold text-[var(--text-primary)] leading-normal">{q.question}</p>
 
-                            {/* Options */}
                             <div className="flex flex-col gap-2">
                               {q.options.map((opt, optIdx) => {
                                 const isSelected = selectedAnswer === optIdx
@@ -859,13 +860,13 @@ export default function PlacementPage() {
                                     className={`p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-colors ${
                                       showAptitudeResults
                                         ? isThisCorrect
-                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium'
+                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold'
                                           : isSelected
                                           ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                                          : 'border-white/5 text-[var(--text-secondary)]'
+                                          : 'border-white/5 text-[var(--text-secondary)] font-medium'
                                         : isSelected
-                                        ? 'border-[var(--accent-blue)] bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] font-medium'
-                                        : 'border-white/5 bg-black/10 hover:bg-white/[0.01] text-[var(--text-secondary)]'
+                                        ? 'border-[var(--accent-blue)] bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] font-bold'
+                                        : 'border-white/5 bg-black/10 hover:bg-white/[0.01] text-[var(--text-secondary)] font-medium'
                                     }`}
                                   >
                                     {opt}
@@ -874,12 +875,11 @@ export default function PlacementPage() {
                               })}
                             </div>
 
-                            {/* Question Correction Details */}
                             {showAptitudeResults && (
-                              <div className={`text-[10px] mt-1 p-3 rounded leading-relaxed border ${
-                                isCorrect ? 'bg-emerald-950/10 border-emerald-500/10 text-emerald-500/90' : 'bg-red-950/10 border-red-500/10 text-red-400'
+                              <div className={`text-[10px] mt-1 p-3 rounded-lg leading-relaxed border ${
+                                isCorrect ? 'bg-emerald-950/10 border-emerald-500/10 text-emerald-500/90 font-medium' : 'bg-red-950/10 border-red-500/10 text-red-400 font-medium'
                               }`}>
-                                <strong className="font-bold block mb-0.5">{isCorrect ? 'Correct!' : 'Incorrect'}</strong>
+                                <strong className="font-extrabold block mb-0.5">{isCorrect ? 'Correct!' : 'Incorrect'}</strong>
                                 {q.explanation}
                               </div>
                             )}
@@ -887,11 +887,10 @@ export default function PlacementPage() {
                         )
                       })}
 
-                      {/* Score control actions */}
                       {!showAptitudeResults ? (
                         <Button
                           onClick={submitAptitudeAnswers}
-                          className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-xs font-semibold py-2 shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer h-9 mt-2"
+                          className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-2.5 shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer h-10 mt-2 rounded-xl"
                         >
                           Submit Quiz Answers
                         </Button>
@@ -903,14 +902,14 @@ export default function PlacementPage() {
                               setShowAptitudeResults(false)
                             }}
                             variant="outline"
-                            className="flex-1 border-[var(--border-glass)] hover:border-white/10 text-xs py-2 h-9 cursor-pointer"
+                            className="flex-1 border-[var(--border-glass)] hover:border-white/10 text-xs py-2 h-9 cursor-pointer rounded-xl font-bold"
                           >
                             Retry Quiz
                           </Button>
                           <Button
                             onClick={handleGenerateAptitude}
                             disabled={isPending}
-                            className="flex-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-xs border-0 cursor-pointer h-9"
+                            className="flex-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs border-0 cursor-pointer h-9 rounded-xl font-bold"
                           >
                             Generate New Quiz
                           </Button>
@@ -920,7 +919,7 @@ export default function PlacementPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center p-12 gap-3 select-none">
                       <Brain size={32} className="text-[var(--text-muted)] animate-pulse" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-sm">
+                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">
                         No active aptitude questions loaded. Select a topic and request questions from the examiner.
                       </span>
                     </div>
@@ -934,31 +933,34 @@ export default function PlacementPage() {
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 select-none">
                     <div className="flex flex-col gap-0.5">
                       <h3 className="text-sm font-bold text-[var(--text-primary)]">Technical Coding Problems</h3>
-                      <p className="text-[10px] text-[var(--text-muted)] font-sans">Solve algorithm milestones and review execution boilerplates.</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">Solve algorithm milestones and review execution boilerplates.</p>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <select
-                        value={dsaTopic}
-                        onChange={(e) => setDsaTopic(e.target.value)}
-                        className="bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-lg px-2.5 py-1 text-[var(--text-primary)] outline-none cursor-pointer"
-                      >
-                        <option value="Arrays">Arrays & Hashing</option>
-                        <option value="Strings">String Manipulation</option>
-                        <option value="Linked Lists">Linked Lists</option>
-                        <option value="Trees">Trees & Graphs</option>
-                        <option value="Dynamic Programming">Dynamic Programming</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={dsaTopic}
+                          onChange={(e) => setDsaTopic(e.target.value)}
+                          className="bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-xl px-3 py-1.5 pr-8 text-[var(--text-primary)] outline-none cursor-pointer appearance-none font-bold"
+                        >
+                          <option value="Arrays">Arrays & Hashing</option>
+                          <option value="Strings">String Manipulation</option>
+                          <option value="Linked Lists">Linked Lists</option>
+                          <option value="Trees">Trees & Graphs</option>
+                          <option value="Dynamic Programming">Dynamic Programming</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-2.5 text-[var(--text-muted)] pointer-events-none" size={12} />
+                      </div>
 
                       <Button
                         onClick={handleGenerateDsa}
                         disabled={isPending}
-                        className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-xs py-1.5 h-8 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)]"
+                        className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-1.5 px-4 h-8.5 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)] rounded-xl"
                       >
                         {isPending ? (
-                          <span className="flex items-center gap-1">
-                            <Loader2 size={12} className="animate-spin" />
-                            Compiling...
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 size={13} className="animate-spin text-black" />
+                            <span>Compiling...</span>
                           </span>
                         ) : (
                           'Request Problems'
@@ -967,11 +969,10 @@ export default function PlacementPage() {
                     </div>
                   </div>
 
-                  {/* Problem selection grids */}
                   {dsaProblems.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-5 items-start mt-2">
                       
-                      {/* Left list of problems (md:col-span-1) */}
+                      {/* Left list of problems */}
                       <div className="md:col-span-1 flex flex-col gap-2.5 select-none">
                         {dsaProblems.map((prob, idx) => {
                           const isSelected = selectedProblemIndex === idx
@@ -985,7 +986,7 @@ export default function PlacementPage() {
                                 setDsaViewMode('editor')
                                 setUserCodeBoilerplate(prob.boilerplate)
                               }}
-                              className={`p-3 bg-black/25 hover:bg-white/[0.02] border rounded-lg cursor-pointer flex flex-col gap-1.5 transition-colors ${
+                              className={`p-3 bg-black/25 hover:bg-white/[0.02] border rounded-xl cursor-pointer flex flex-col gap-1.5 transition-colors ${
                                 isSelected ? 'border-[var(--accent-blue)] bg-white/[0.01]' : 'border-white/5'
                               }`}
                             >
@@ -999,16 +1000,16 @@ export default function PlacementPage() {
                               </div>
                               
                               <div className="flex items-center justify-between text-[9px] text-[var(--text-muted)] mt-1.5">
-                                <span>JavaScript</span>
+                                <span className="font-semibold">JavaScript</span>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     toggleDsaSolved(prob.title)
                                   }}
-                                  className={`px-1.5 py-0.5 rounded text-[8px] font-bold border transition-colors ${
+                                  className={`px-2 py-0.5 rounded text-[8px] font-bold border transition-colors ${
                                     isSolved 
                                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                                      : 'border-white/10 hover:border-white/20 text-[var(--text-muted)] hover:text-white'
+                                      : 'border-white/10 hover:border-white/20 text-[var(--text-muted)] hover:text-white cursor-pointer'
                                   }`}
                                 >
                                   {isSolved ? 'Solved' : 'Mark Solved'}
@@ -1019,7 +1020,7 @@ export default function PlacementPage() {
                         })}
                       </div>
 
-                      {/* Right coding workspace editor split screen (md:col-span-3) */}
+                      {/* Right coding workspace editor */}
                       <div className="md:col-span-3">
                         {selectedProblemIndex !== null ? (
                           <div className="flex flex-col gap-4">
@@ -1032,7 +1033,7 @@ export default function PlacementPage() {
                               <div className="flex items-center bg-white/5 border border-[var(--border-glass)] rounded-lg p-0.5">
                                 <button
                                   onClick={() => setDsaViewMode('editor')}
-                                  className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
+                                  className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
                                     dsaViewMode === 'editor' ? 'bg-white/10 text-[var(--accent-blue)]' : 'text-[var(--text-secondary)]'
                                   }`}
                                 >
@@ -1040,7 +1041,7 @@ export default function PlacementPage() {
                                 </button>
                                 <button
                                   onClick={() => setDsaViewMode('solution')}
-                                  className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
+                                  className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
                                     dsaViewMode === 'solution' ? 'bg-white/10 text-[var(--accent-blue)]' : 'text-[var(--text-secondary)]'
                                   }`}
                                 >
@@ -1049,52 +1050,59 @@ export default function PlacementPage() {
                               </div>
                             </div>
 
-                            {/* Split code screen layout contents */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                               {/* Left specs detail box */}
-                              <div className="p-4 bg-black/15 border border-[var(--border-glass)] rounded-lg flex flex-col gap-3 min-h-[30vh] max-h-[44vh] overflow-y-auto custom-scrollbar">
-                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Problem Description</span>
-                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                              <div className="p-4 bg-black/15 border border-[var(--border-glass)] rounded-xl flex flex-col gap-3 min-h-[30vh] max-h-[44vh] overflow-y-auto custom-scrollbar">
+                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider select-none">Problem Description</span>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-semibold">
                                   {dsaProblems[selectedProblemIndex].description}
                                 </p>
                                 
-                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-1.5">Examples</span>
-                                <pre className="p-3 bg-black/40 rounded border border-white/5 text-[10px] font-mono text-cyan-400 whitespace-pre-wrap leading-relaxed">
+                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-1.5 select-none">Examples</span>
+                                <pre className="p-3 bg-black/40 rounded-lg border border-white/5 text-[10px] font-mono text-cyan-400 whitespace-pre-wrap leading-relaxed">
                                   {dsaProblems[selectedProblemIndex].inputOutput}
                                 </pre>
                               </div>
 
-                              {/* Right workspace interactive box */}
+                              {/* Right workspace terminal code box */}
                               {dsaViewMode === 'editor' ? (
-                                <div className="rounded-lg border border-[var(--border-glass)] bg-[#090a0f] overflow-hidden flex flex-col font-mono text-[10px] text-[var(--text-secondary)]">
-                                  {/* Terminal Bar header */}
-                                  <div className="flex items-center justify-between px-3 py-1.5 bg-black/40 border-b border-[var(--border-glass)] select-none">
-                                    <div className="flex items-center gap-1">
+                                <div className="rounded-xl border border-white/5 bg-[#090a0f] overflow-hidden flex flex-col font-mono text-[10px] text-[var(--text-secondary)] shadow-2xl">
+                                  <div className="flex items-center justify-between px-3 py-1.5 bg-black/40 border-b border-white/5 select-none">
+                                    <div className="flex items-center gap-1.5">
                                       <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
                                       <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
                                       <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
                                     </div>
-                                    <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">main.js</span>
+                                    <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold">solution.js</span>
                                     <button
                                       onClick={() => setUserCodeBoilerplate(dsaProblems[selectedProblemIndex].boilerplate)}
-                                      className="text-[8px] text-[var(--text-muted)] hover:text-white flex items-center gap-0.5 border border-white/5 px-1.5 py-0.5 rounded cursor-pointer"
+                                      className="text-[8px] text-[var(--text-muted)] hover:text-white flex items-center gap-0.5 border border-white/5 px-1.5 py-0.5 rounded cursor-pointer font-bold"
                                     >
                                       <RotateCcw size={8} />
                                       Reset
                                     </button>
                                   </div>
 
-                                  <textarea
-                                    value={userCodeBoilerplate}
-                                    onChange={(e) => setUserCodeBoilerplate(e.target.value)}
-                                    className="w-full flex-1 p-3 bg-transparent border-0 outline-none resize-none font-mono text-[10px] leading-relaxed min-h-[26vh] max-h-[36vh] text-emerald-400/90 custom-scrollbar"
-                                    placeholder="// Start writing coding solution..."
-                                  />
+                                  <div className="flex-1 flex min-h-[26vh] max-h-[36vh]">
+                                    {/* Line numbers column */}
+                                    <div className="w-8 py-3 bg-black/25 text-[9px] font-mono text-white/20 text-center select-none border-r border-white/5 leading-relaxed">
+                                      {Array.from({ length: 12 }).map((_, i) => (
+                                        <div key={i}>{i + 1}</div>
+                                      ))}
+                                    </div>
+                                    
+                                    <textarea
+                                      value={userCodeBoilerplate}
+                                      onChange={(e) => setUserCodeBoilerplate(e.target.value)}
+                                      className="flex-1 p-3 bg-transparent border-0 outline-none resize-none font-mono text-[10px] leading-relaxed text-emerald-400/90 custom-scrollbar"
+                                      placeholder="// Start writing coding solution..."
+                                    />
+                                  </div>
                                 </div>
                               ) : (
-                                <div className="p-4 bg-black/15 border border-[var(--border-glass)] rounded-lg flex flex-col gap-2 min-h-[30vh] max-h-[44vh] overflow-y-auto custom-scrollbar">
+                                <div className="p-4 bg-[#090a0f] border border-[var(--border-glass)] rounded-xl flex flex-col gap-2.5 min-h-[30vh] max-h-[44vh] overflow-y-auto custom-scrollbar">
                                   <span className="text-[10px] font-bold text-[var(--accent-blue)] uppercase tracking-wider">Walkthrough Guide</span>
-                                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
+                                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap font-medium">
                                     {dsaProblems[selectedProblemIndex].approach}
                                   </p>
                                 </div>
@@ -1102,7 +1110,7 @@ export default function PlacementPage() {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/5 rounded-lg text-xs text-[var(--text-muted)] select-none">
+                          <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/5 rounded-xl text-xs text-[var(--text-muted)] select-none">
                             Select a problem from the list to launch coding terminal workspace.
                           </div>
                         )}
@@ -1112,7 +1120,7 @@ export default function PlacementPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center p-12 gap-3 select-none">
                       <Code2 size={32} className="text-[var(--text-muted)] animate-pulse" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-sm">
+                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">
                         No coding problems loaded. Select a DSA topic and request interview coding problems.
                       </span>
                     </div>
@@ -1132,12 +1140,12 @@ export default function PlacementPage() {
                     <Button
                       onClick={handleGenerateHrQuestions}
                       disabled={isPending}
-                      className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white text-xs py-1.5 h-8 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)] self-start sm:self-center"
+                      className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-1.5 px-4 h-8.5 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)] self-start sm:self-center rounded-xl"
                     >
                       {isPending ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 size={12} className="animate-spin" />
-                          Formulating...
+                        <span className="flex items-center gap-1.5">
+                          <Loader2 size={13} className="animate-spin text-black" />
+                          <span>Formulating...</span>
                         </span>
                       ) : (
                         'Request Questions'
@@ -1145,24 +1153,22 @@ export default function PlacementPage() {
                     </Button>
                   </div>
 
-                  {/* STAR questions accordions list */}
                   {hrQuestions.length > 0 ? (
-                    <div className="flex flex-col gap-3 mt-2">
+                    <div className="flex flex-col gap-3.5 mt-2">
                       {hrQuestions.map((hr, idx) => {
                         const isExpanded = expandedStarQuestionIndex === idx
                         
                         return (
                           <div
                             key={idx}
-                            className="border border-[var(--border-glass)] bg-black/10 rounded-lg overflow-hidden transition-colors"
+                            className="border border-white/5 bg-black/10 rounded-xl overflow-hidden transition-colors"
                           >
-                            {/* Accordion header bar */}
                             <div
                               onClick={() => setExpandedStarQuestionIndex(isExpanded ? null : idx)}
-                              className="flex items-center justify-between p-3.5 bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer transition-colors select-none"
+                              className="flex items-center justify-between p-3.5 bg-white/[0.01] hover:bg-white/[0.03] cursor-pointer transition-colors select-none"
                             >
                               <div className="flex items-center gap-3 pr-2 min-w-0">
-                                <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-bold text-[var(--accent-blue)] shrink-0">
+                                <span className="w-5 h-5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[10px] font-bold text-[var(--accent-blue)] shrink-0">
                                   {idx + 1}
                                 </span>
                                 <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[480px]">
@@ -1174,43 +1180,40 @@ export default function PlacementPage() {
                               </div>
                             </div>
 
-                            {/* STAR Breakdown body */}
                             <AnimatePresence>
                               {isExpanded && (
                                 <motion.div
                                   initial={{ height: 0 }}
                                   animate={{ height: 'auto' }}
                                   exit={{ height: 0 }}
-                                  className="overflow-hidden bg-black/5 border-t border-[var(--border-glass)]"
+                                  className="overflow-hidden bg-black/5 border-t border-white/5"
                                 >
                                   <div className="p-4 flex flex-col gap-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {/* Left Columns: STAR variables */}
-                                      <div className="flex flex-col gap-3">
-                                        <span className="text-[9px] font-bold text-[var(--accent-blue)] uppercase tracking-wider">STAR Formulation</span>
+                                      <div className="flex flex-col gap-3.5">
+                                        <span className="text-[9px] font-extrabold text-[var(--accent-blue)] uppercase tracking-widest select-none">STAR Formulation</span>
                                         
                                         <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase">Situation</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2 border-l border-[var(--accent-blue)]/30">{hr.starModel.situation}</p>
+                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Situation</strong>
+                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.situation}</p>
                                         </div>
                                         <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase">Task</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2 border-l border-[var(--accent-blue)]/30">{hr.starModel.task}</p>
+                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Task</strong>
+                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.task}</p>
                                         </div>
                                         <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase">Action</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2 border-l border-[var(--accent-blue)]/30">{hr.starModel.action}</p>
+                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Action</strong>
+                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.action}</p>
                                         </div>
                                         <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase">Result</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2 border-l border-[var(--accent-blue)]/30">{hr.starModel.result}</p>
+                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Result</strong>
+                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.result}</p>
                                         </div>
                                       </div>
 
-                                      {/* Right Columns: Ideal outline summary */}
-                                      <div className="flex flex-col gap-2.5 p-3.5 bg-white/[0.01] border border-[var(--border-glass)] rounded-lg">
-                                        <span className="text-[9px] font-bold text-[var(--accent-purple)] uppercase tracking-wider">Recruiter Tips & Outlines</span>
-                                        <p className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">
+                                      <div className="flex flex-col gap-2.5 p-4 bg-white/[0.01] border border-white/5 rounded-xl">
+                                        <span className="text-[9px] font-extrabold text-[var(--accent-purple)] uppercase tracking-widest select-none">Recruiter Tips & Outlines</span>
+                                        <p className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed font-semibold">
                                           {hr.idealOutline}
                                         </p>
                                       </div>
@@ -1226,7 +1229,7 @@ export default function PlacementPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center p-12 gap-3 select-none">
                       <FileText size={32} className="text-[var(--text-muted)] animate-pulse" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-sm">
+                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">
                         No HR behavioral questions loaded. Request mock behavior questions from the recruitment database.
                       </span>
                     </div>
@@ -1243,37 +1246,40 @@ export default function PlacementPage() {
                       
                       <div className="flex flex-col gap-1.5">
                         <h3 className="text-sm font-bold text-[var(--text-primary)]">AI Mock Interview Simulator</h3>
-                        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        <p className="text-xs text-[var(--text-muted)] leading-relaxed font-medium">
                           Test your answers in real-time. Pick your career role, start simulation, and get graded feedback scores.
                         </p>
                       </div>
 
                       <div className="flex flex-col gap-2 w-full text-left">
-                        <label htmlFor="simulatorRole" className="text-xs font-semibold text-[var(--text-primary)]">Target Placement Job Role</label>
-                        <select
-                          id="simulatorRole"
-                          value={jobRole}
-                          onChange={(e) => setJobRole(e.target.value)}
-                          className="w-full bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-lg px-3 py-2 text-[var(--text-primary)] outline-none cursor-pointer"
-                        >
-                          <option value="Software Engineer">Software Engineer (General)</option>
-                          <option value="Frontend Engineer">Frontend Engineer</option>
-                          <option value="Backend Developer">Backend Developer</option>
-                          <option value="Product Manager">Product Manager</option>
-                          <option value="Data Analyst">Data Analyst</option>
-                          <option value="Consultant">Management Consultant</option>
-                        </select>
+                        <label htmlFor="simulatorRole" className="text-xs font-bold text-[var(--text-primary)]">Target Placement Job Role</label>
+                        <div className="relative">
+                          <select
+                            id="simulatorRole"
+                            value={jobRole}
+                            onChange={(e) => setJobRole(e.target.value)}
+                            className="w-full bg-black/45 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-xl px-3.5 py-2.5 text-[var(--text-primary)] outline-none cursor-pointer appearance-none font-bold"
+                          >
+                            <option value="Software Engineer">Software Engineer (General)</option>
+                            <option value="Frontend Engineer">Frontend Engineer</option>
+                            <option value="Backend Developer">Backend Developer</option>
+                            <option value="Product Manager">Product Manager</option>
+                            <option value="Data Analyst">Data Analyst</option>
+                            <option value="Consultant">Management Consultant</option>
+                          </select>
+                          <ChevronDown className="absolute right-3.5 top-3.5 text-[var(--text-muted)] pointer-events-none" size={13} />
+                        </div>
                       </div>
 
                       <Button
                         onClick={handleStartInterview}
                         disabled={isPending}
-                        className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white hover:opacity-95 text-xs font-semibold py-2 h-9 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)]"
+                        className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black hover:opacity-95 text-xs font-bold py-3 shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer rounded-xl"
                       >
                         {isPending ? (
                           <span className="flex items-center gap-1.5 justify-center">
-                            <Loader2 size={13} className="animate-spin" />
-                            Establishing Sim Connection...
+                            <Loader2 size={13} className="animate-spin text-black" />
+                            <span>Establishing Connection...</span>
                           </span>
                         ) : (
                           'Launch Simulator'
@@ -1282,13 +1288,64 @@ export default function PlacementPage() {
                     </div>
                   )}
 
-                  {/* Simulator Interaction state */}
                   {simulatorStatus === 'interviewing' && (
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-5">
                       
-                      {/* Interaction controls header bar */}
+                      {/* INTERACTIVE VIDEO CALL MOCK FRAMES */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Interviewer Frame */}
+                        <div className="relative rounded-xl border border-white/5 bg-[#171821] overflow-hidden aspect-video flex flex-col justify-between p-3 select-none">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/30 flex items-center justify-center text-[var(--accent-purple)] animate-pulse">
+                              <Sparkles size={28} />
+                            </div>
+                          </div>
+                          
+                          <div className="relative z-10 self-start bg-black/60 px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase tracking-wider">
+                            Interviewer (Stripe Bot)
+                          </div>
+                          
+                          <div className="relative z-10 self-end flex items-center gap-1 bg-black/60 px-2 py-0.5 rounded text-[8px] font-semibold text-emerald-400">
+                            <Volume2 size={10} className="animate-bounce" /> Live Audio Connected
+                          </div>
+                        </div>
+
+                        {/* Candidate Frame (You) */}
+                        <div className="relative rounded-xl border border-white/5 bg-[#171821] overflow-hidden aspect-video flex flex-col justify-between p-3 select-none">
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                            {isVideoOn ? (
+                              <div className="w-16 h-16 rounded-full bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/30 flex items-center justify-center text-[var(--accent-blue)]">
+                                <User size={28} className="animate-pulse" />
+                              </div>
+                            ) : (
+                              <VideoOff size={28} className="text-white/20" />
+                            )}
+                          </div>
+                          
+                          <div className="relative z-10 self-start bg-black/60 px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase tracking-wider">
+                            Student (You)
+                          </div>
+
+                          {/* Control tabs */}
+                          <div className="relative z-10 self-center flex items-center gap-2 bg-black/60 p-1 rounded-lg">
+                            <button
+                              onClick={() => setIsVideoOn(!isVideoOn)}
+                              className={`p-1.5 rounded-md cursor-pointer transition-all ${isVideoOn ? 'bg-white/10 text-white' : 'bg-red-500/20 text-red-400'}`}
+                            >
+                              {isVideoOn ? <Video size={12} /> : <VideoOff size={12} />}
+                            </button>
+                            <button
+                              onClick={() => setIsMicOn(!isMicOn)}
+                              className={`p-1.5 rounded-md cursor-pointer transition-all ${isMicOn ? 'bg-white/10 text-white' : 'bg-red-500/20 text-red-400'}`}
+                            >
+                              {isMicOn ? <Mic size={12} /> : <MicOff size={12} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
-                        <span className="text-[10px] bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse flex items-center gap-1">
+                        <span className="text-[9px] bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                           Sim Active
                         </span>
@@ -1298,37 +1355,33 @@ export default function PlacementPage() {
                           size="xs"
                           onClick={handleFinishInterview}
                           disabled={isPending || dialogHistory.length < 4}
-                          className="border-[var(--border-glass)] text-[10px] cursor-pointer text-amber-400 hover:border-amber-400/20"
-                          title="Finish interview to request grade reports"
+                          className="border-[var(--border-glass)] text-[10px] font-bold cursor-pointer text-amber-400 hover:border-amber-400/20 rounded-lg"
                         >
                           {isPending ? <Loader2 size={10} className="animate-spin" /> : 'Finish & Grade Interview'}
                         </Button>
                       </div>
 
-                      {/* Dialogue Transcript viewport */}
                       <div className="bg-black/25 border border-[var(--border-glass)] rounded-xl p-4 flex flex-col gap-4 min-h-[35vh] max-h-[46vh] overflow-y-auto custom-scrollbar select-text">
                         {dialogHistory.map((chat, idx) => (
                           <div key={idx} className="flex flex-col gap-2">
-                            {/* Dialogue bubbles */}
                             <div
                               className={`flex flex-col gap-1 text-[11px] max-w-[85%] leading-relaxed ${
                                 chat.role === 'candidate'
-                                  ? 'self-end bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 p-3 rounded-xl rounded-tr-none text-[var(--text-primary)]'
-                                  : 'self-start bg-white/5 border border-white/5 p-3 rounded-xl rounded-tl-none text-[var(--text-secondary)]'
+                                  ? 'self-end bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 p-3 rounded-xl rounded-tr-none text-[var(--text-primary)] font-semibold'
+                                  : 'self-start bg-white/5 border border-white/5 p-3 rounded-xl rounded-tl-none text-[var(--text-secondary)] font-medium'
                               }`}
                             >
-                              <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">
+                              <span className="text-[8px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-0.5">
                                 {chat.role === 'candidate' ? 'Candidate (You)' : 'AI Interviewer'}
                               </span>
                               <p>{chat.content}</p>
                             </div>
 
-                            {/* Recruiter feedback overlay on candidate responses */}
                             {chat.role === 'interviewer' && chat.feedback && (
-                              <div className="self-start p-2.5 bg-amber-400/5 border border-amber-400/10 rounded-lg text-[9px] text-amber-400 max-w-[80%] leading-relaxed mt-1 flex flex-col gap-1 select-text">
-                                <span className="font-bold flex items-center gap-1">
+                              <div className="self-start p-2.5 bg-amber-400/5 border border-amber-400/10 rounded-lg text-[9px] text-amber-400 max-w-[80%] leading-relaxed mt-1 flex flex-col gap-1 select-text font-semibold">
+                                <span className="font-extrabold flex items-center gap-1 text-[8px] uppercase tracking-widest">
                                   <Sparkles size={9} />
-                                  Recruiter Feedback (Accuracy Grade: {chat.score}/100)
+                                  Feedback (Grade: {chat.score}/100)
                                 </span>
                                 <p>{chat.feedback}</p>
                               </div>
@@ -1342,7 +1395,6 @@ export default function PlacementPage() {
                         )}
                       </div>
 
-                      {/* Chat Input Controls */}
                       <div className="flex gap-2 select-none">
                         <input
                           type="text"
@@ -1351,12 +1403,12 @@ export default function PlacementPage() {
                           onChange={(e) => setCandidateResponse(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendResponse()}
                           disabled={isPending}
-                          className="flex-1 bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] rounded-lg px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none transition-colors"
+                          className="flex-1 bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] rounded-xl px-4 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none transition-all font-semibold"
                         />
                         <Button
                           onClick={handleSendResponse}
                           disabled={isPending || !candidateResponse.trim()}
-                          className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-white hover:opacity-95 text-xs font-semibold px-4 py-2 h-9 border-0 cursor-pointer flex items-center justify-center gap-1.5"
+                          className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black hover:opacity-95 text-xs font-bold px-4 py-2.5 h-9 border-0 cursor-pointer flex items-center justify-center gap-1.5 rounded-xl"
                         >
                           <Send size={12} />
                           Send
@@ -1365,7 +1417,6 @@ export default function PlacementPage() {
                     </div>
                   )}
 
-                  {/* Simulator Evaluation finished card state */}
                   {simulatorStatus === 'completed' && simulationResult && (
                     <div className="flex flex-col gap-5 select-text">
                       <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
@@ -1374,17 +1425,15 @@ export default function PlacementPage() {
                           variant="outline"
                           size="xs"
                           onClick={() => setSimulatorStatus('idle')}
-                          className="border-[var(--border-glass)] text-[10px] cursor-pointer"
+                          className="border-[var(--border-glass)] text-[10px] font-bold cursor-pointer rounded-lg"
                         >
                           New Session
                         </Button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        
-                        {/* Overall score radial summary card */}
-                        <div className="md:col-span-1 flex flex-col gap-4 p-4 bg-white/[0.01] border border-[var(--border-glass)] rounded-xl items-center justify-center">
-                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest text-center">Sim Performance</span>
+                        <div className="md:col-span-1 flex flex-col gap-4 p-4 bg-white/[0.01] border border-white/5 rounded-xl items-center justify-center select-none">
+                          <span className="text-[10px] font-extrabold text-[var(--text-muted)] uppercase tracking-widest text-center">Sim Performance</span>
                           
                           <div className="relative w-28 h-28 shrink-0">
                             <svg className="w-full h-full transform -rotate-90">
@@ -1402,13 +1451,10 @@ export default function PlacementPage() {
                           </div>
                         </div>
 
-                        {/* Details strengths/weaknesses */}
                         <div className="md:col-span-2 flex flex-col gap-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            
-                            {/* Strengths card */}
-                            <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/10 rounded-lg flex flex-col gap-2 text-xs">
-                              <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                            <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/10 rounded-xl flex flex-col gap-2 text-xs font-semibold">
+                              <span className="text-[9px] font-extrabold text-emerald-400 uppercase tracking-widest flex items-center gap-1 select-none">
                                 <CheckCircle2 size={10} />
                                 Strengths
                               </span>
@@ -1419,9 +1465,8 @@ export default function PlacementPage() {
                               </ul>
                             </div>
 
-                            {/* Weaknesses card */}
-                            <div className="p-3.5 bg-red-500/5 border border-red-500/10 rounded-lg flex flex-col gap-2 text-xs">
-                              <span className="text-[9px] font-bold text-red-400 uppercase tracking-wider flex items-center gap-1">
+                            <div className="p-3.5 bg-red-500/5 border border-red-500/10 rounded-xl flex flex-col gap-2 text-xs font-semibold">
+                              <span className="text-[9px] font-extrabold text-red-400 uppercase tracking-widest flex items-center gap-1 select-none">
                                 <XCircle size={10} />
                                 Areas to Improve
                               </span>
@@ -1431,15 +1476,12 @@ export default function PlacementPage() {
                                 ))}
                               </ul>
                             </div>
-
                           </div>
                         </div>
-
                       </div>
 
-                      {/* Summary textbox */}
-                      <div className="p-4 bg-black/25 border border-white/5 rounded-lg text-xs leading-relaxed text-[var(--text-secondary)] flex flex-col gap-1.5 mt-2">
-                        <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Evaluation Executive Summary</span>
+                      <div className="p-4 bg-black/25 border border-white/5 rounded-xl text-xs leading-relaxed text-[var(--text-secondary)] flex flex-col gap-1.5 mt-2 font-medium">
+                        <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider select-none">Evaluation Executive Summary</span>
                         <p>{simulationResult.summary}</p>
                       </div>
                     </div>
