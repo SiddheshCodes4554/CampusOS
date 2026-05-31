@@ -16,7 +16,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  Compass
 } from 'lucide-react'
 import { useDashboardStore } from '@/store/useDashboardStore'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Academic Brain', href: '/brain', icon: Brain },
+    { name: 'Semester Copilot', href: '/semester', icon: Compass },
     { name: 'Study Planner', href: '/planner', icon: Calendar },
     { name: 'Resume Analyzer', href: '/resume', icon: FileText },
     { name: 'Project Builder', href: '/projects', icon: Cpu },
