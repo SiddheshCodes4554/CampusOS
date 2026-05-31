@@ -20,7 +20,8 @@ import {
   Compass,
   MessageSquare,
   Flame,
-  RefreshCw
+  RefreshCw,
+  LineChart
 } from 'lucide-react'
 import { useDashboardStore } from '@/store/useDashboardStore'
 import { cn } from '@/lib/utils'
@@ -44,6 +45,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
     { name: 'Exam Prep', href: '/exam', icon: Flame },
     { name: 'Study Planner', href: '/planner', icon: Calendar },
     { name: 'Revision Mode', href: '/revision', icon: RefreshCw },
+    { name: 'Academic Analytics', href: '/analytics', icon: LineChart },
     { name: 'Resume Analyzer', href: '/resume', icon: FileText },
     { name: 'Project Builder', href: '/projects', icon: Cpu },
     { name: 'Internship Tracker', href: '/internships', icon: Briefcase },

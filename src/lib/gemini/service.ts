@@ -799,3 +799,35 @@ export async function generateRevisionPlan(subjectName: string, durationDays: nu
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'revision_plan_generate')
   return JSON.parse(aiOutput)
 }
+
+// ----------------------------------------------------
+// 7. ACADEMIC ANALYTICS SERVICE
+// ----------------------------------------------------
+export async function generateAcademicRecommendations(statsSummary: string) {
+  const systemInstruction = 
+    'You are an expert academic advisor and study planner. Analyze the provided study metrics, topic coverage, quiz scores, and goals completion details to construct personalized, actionable academic recommendations. Categorize each recommendation with a priority level (high, medium, low) and provide a specific, practical action tip. Output must strictly match the JSON schema structure.'
+
+  const prompt = `Analyze my academic performance metrics and goals progress. Generate study focus recommendations based on these statistics:\n\n${statsSummary}`
+
+  const responseSchema = {
+    type: "object",
+    properties: {
+      recommendations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            priority: { type: "string", enum: ["high", "medium", "low"] },
+            actionTip: { type: "string" }
+          },
+          required: ["title", "priority", "actionTip"]
+        }
+      }
+    },
+    required: ["recommendations"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'analytics_recommendations')
+  return JSON.parse(aiOutput)
+}
