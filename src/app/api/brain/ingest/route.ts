@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getEmbeddings } from '@/lib/gemini/embeddings'
+import { extractTextFromDocx, extractTextFromPptx } from '@/lib/gemini/extractors'
 
 interface GeminiRequestBody {
   contents: Array<{
@@ -64,6 +65,9 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized session.' }, { status: 401 })
     }
+
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
 
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -131,44 +135,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Failed to register document: ${docError.message}` }, { status: 500 })
     }
 
-    // 3. Extract text/markdown from the document using Gemini
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
+    // 3. Extract text/markdown from the document based on type
+    let extractedMarkdown = ''
+    const extension = file.name.split('.').pop()?.toLowerCase()
 
-    const extractRequestBody: GeminiRequestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data
+    if (extension === 'docx') {
+      extractedMarkdown = await extractTextFromDocx(buffer)
+    } else if (extension === 'pptx') {
+      extractedMarkdown = extractTextFromPptx(buffer)
+    } else if (extension === 'txt') {
+      extractedMarkdown = buffer.toString('utf8')
+    } else {
+      // PDF or fallback: Call Gemini Multimodal parsing (which automatically performs OCR)
+      const extractRequestBody: GeminiRequestBody = {
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data
+                }
+              },
+              {
+                text: "Extract all text, headers, checklists, equations, and tables from this academic file. Return the document content formatted as clean, structured Markdown. Do not wrap in extra markdown block formatting tags, just output clean text content."
               }
-            },
-            {
-              text: "Extract all text, headers, checklists, equations, and tables from this academic file. Return the document content formatted as clean, structured Markdown. Do not wrap in extra markdown block formatting tags, just output clean text content."
-            }
-          ]
+            ]
+          }
+        ],
+        systemInstruction: {
+          parts: [{ text: "You are an expert academic text extractor. You parse documents into structurally correct Markdown." }]
         }
-      ],
-      systemInstruction: {
-        parts: [{ text: "You are an expert academic text extractor. You parse documents into structurally correct Markdown." }]
       }
+
+      const extractRes = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(extractRequestBody)
+      })
+
+      if (!extractRes.ok) {
+        const errText = await extractRes.text()
+        throw new Error(`Gemini Extraction failed: ${extractRes.status} - ${errText}`)
+      }
+
+      const extractData = await extractRes.json()
+      extractedMarkdown = extractData.candidates?.[0]?.content?.parts?.[0]?.text || ''
     }
-
-    const extractRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(extractRequestBody)
-    })
-
-    if (!extractRes.ok) {
-      const errText = await extractRes.text()
-      throw new Error(`Gemini Extraction failed: ${extractRes.status} - ${errText}`)
-    }
-
-    const extractData = await extractRes.json()
-    const extractedMarkdown = extractData.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     if (!extractedMarkdown.trim()) {
       throw new Error("No text content could be extracted from this document.")
