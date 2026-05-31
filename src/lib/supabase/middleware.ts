@@ -33,20 +33,34 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Define protected dashboard endpoints
-  const protectedRoutes = ['/dashboard', '/copilot', '/coursework', '/planner', '/hub', '/budget']
+  const protectedRoutes = [
+    '/dashboard',
+    '/internships',
+    '/notes',
+    '/placement',
+    '/planner',
+    '/projects',
+    '/resume',
+    '/settings'
+  ]
   const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route))
 
-  if (isProtectedRoute && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
+  // Skip redirect logic for Server Actions to avoid next.js 15 client router crash
+  const isServerAction = request.headers.has('next-action')
 
-  // Redirect authenticated user away from login/root to dashboard
-  if (user && (path === '/login' || path === '/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+  if (!isServerAction) {
+    if (isProtectedRoute && !user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+
+    // Redirect authenticated user away from login/root to dashboard
+    if (user && (path === '/login' || path === '/')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
