@@ -18,7 +18,8 @@ import {
   ChevronRight,
   LogOut,
   Compass,
-  MessageSquare
+  MessageSquare,
+  Flame
 } from 'lucide-react'
 import { useDashboardStore } from '@/store/useDashboardStore'
 import { cn } from '@/lib/utils'
@@ -39,6 +40,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
     { name: 'Academic Brain', href: '/brain', icon: Brain },
     { name: 'Academic Chat', href: '/chat', icon: MessageSquare },
     { name: 'Semester Copilot', href: '/semester', icon: Compass },
+    { name: 'Exam Prep', href: '/exam', icon: Flame },
     { name: 'Study Planner', href: '/planner', icon: Calendar },
     { name: 'Resume Analyzer', href: '/resume', icon: FileText },
     { name: 'Project Builder', href: '/projects', icon: Cpu },

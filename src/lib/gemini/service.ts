@@ -655,3 +655,65 @@ export async function evaluateMockInterviewFinal(history: Array<{ role: string; 
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'simulator_final_evaluation')
   return JSON.parse(aiOutput)
 }
+
+// ----------------------------------------------------
+// 5. EXAM INTELLIGENCE ENGINE SERVICE
+// ----------------------------------------------------
+export async function generateExamAnalysis(subjectName: string, compiledText: string) {
+  const systemInstruction = 
+    'You are an elite academic diagnostic examiner. Based on the provided syllabus, notes, and previous year exam papers, analyze repeated patterns, estimate topic weightage, map high-priority chapters, and predict probable questions. Output must strictly match the JSON schema structure.'
+
+  const prompt = `Perform an exam intelligence diagnostic analysis for the subject: "${subjectName}". Use the following source materials (syllabus, notes, past papers) as the primary context:\n\n${compiledText}`
+
+  const responseSchema = {
+    type: "object",
+    properties: {
+      subject: { type: "string" },
+      highPriorityChapters: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            chapterName: { type: "string" },
+            importanceScore: { type: "integer" },
+            reason: { type: "string" },
+            frequencyInPYQs: { type: "integer" }
+          },
+          required: ["chapterName", "importanceScore", "reason", "frequencyInPYQs"]
+        }
+      },
+      heatmapTopics: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            topicName: { type: "string" },
+            chapterName: { type: "string" },
+            importance: { type: "string" },
+            pyqOccurrence: { type: "integer" },
+            lectureNoteMention: { type: "string" },
+            estimatedMarksWeightage: { type: "integer" }
+          },
+          required: ["topicName", "chapterName", "importance", "pyqOccurrence", "lectureNoteMention", "estimatedMarksWeightage"]
+        }
+      },
+      probableQuestions: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            question: { type: "string" },
+            chapterName: { type: "string" },
+            expectedMarks: { type: "integer" },
+            answerOutline: { type: "string" }
+          },
+          required: ["question", "chapterName", "expectedMarks", "answerOutline"]
+        }
+      }
+    },
+    required: ["subject", "highPriorityChapters", "heatmapTopics", "probableQuestions"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'exam_intelligence_analyze')
+  return JSON.parse(aiOutput)
+}
