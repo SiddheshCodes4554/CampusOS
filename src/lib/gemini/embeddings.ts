@@ -8,15 +8,16 @@ export async function getEmbedding(text: string): Promise<number[]> {
     throw new Error('GEMINI_API_KEY is not configured in environment variables.');
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`;
   
   const body = {
-    model: "models/text-embedding-004",
+    model: "models/gemini-embedding-001",
     content: {
       parts: [
         { text: text }
       ]
-    }
+    },
+    outputDimensionality: 768
   };
 
   const response = await fetch(url, {
@@ -58,14 +59,15 @@ export async function getEmbeddings(texts: string[]): Promise<number[][]> {
 
   for (let i = 0; i < texts.length; i += batchSize) {
     const chunk = texts.slice(i, i + batchSize);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${GEMINI_API_KEY}`;
     
     const body = {
       requests: chunk.map(text => ({
-        model: "models/text-embedding-004",
+        model: "models/gemini-embedding-001",
         content: {
           parts: [{ text }]
-        }
+        },
+        outputDimensionality: 768
       }))
     };
 
