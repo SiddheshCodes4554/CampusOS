@@ -37,18 +37,11 @@ export async function GET() {
         });
         totalStudyHours = Math.round((totalMins / 60) * 10) / 10
       } else {
-        // Fallback or default study plans
-        const { data: plans } = await supabase
-          .from('study_plans')
-          .select('daily_hours')
-          .eq('user_id', user.id)
-        if (plans && plans.length > 0) {
-          const sum = plans.reduce((acc, curr) => acc + Number(curr.daily_hours), 0)
-          totalStudyHours = sum * 5 // Estimate 5 days of study
-        }
+        totalStudyHours = 0
       }
     } catch (e) {
       console.warn('Unable to aggregate study sessions:', e)
+      totalStudyHours = 0
     }
 
     // Fill velocity data (past 7 days)
@@ -98,14 +91,14 @@ export async function GET() {
         if (totalItems > 0) {
           topicCoverage = Math.round((completedItems / totalItems) * 100)
         } else {
-          topicCoverage = 65 // Default mock fallback if no units parsed
+          topicCoverage = 0
         }
       } else {
-        topicCoverage = 50 // baseline mock fallback
+        topicCoverage = 0
       }
     } catch (e) {
       console.warn('Unable to fetch semester topic coverage:', e)
-      topicCoverage = 45
+      topicCoverage = 0
     }
 
     // --- 3. Query Academic Knowledge Growth ---
@@ -121,12 +114,9 @@ export async function GET() {
         .eq('user_id', user.id)
 
       knowledgeGrowth = (docsCount || 0) * 10 + (nodesCount || 0)
-      if (knowledgeGrowth === 0) {
-        knowledgeGrowth = 28 // baseline fallback representing mock nodes
-      }
     } catch (e) {
       console.warn('Unable to query knowledge nodes:', e)
-      knowledgeGrowth = 15
+      knowledgeGrowth = 0
     }
 
     // --- 4. Query Quiz Performance ---
@@ -140,11 +130,11 @@ export async function GET() {
         const total = scores.reduce((acc, curr) => acc + Number(curr.score), 0)
         quizPerformance = Math.round(total / scores.length)
       } else {
-        quizPerformance = 78 // Default mock average
+        quizPerformance = 0
       }
     } catch (e) {
       console.warn('Unable to query quiz scores:', e)
-      quizPerformance = 72
+      quizPerformance = 0
     }
 
     // --- 5. Query Revision Progress ---
@@ -166,14 +156,14 @@ export async function GET() {
         if (totalTasks > 0) {
           revisionProgress = Math.round((completedTasks / totalTasks) * 100)
         } else {
-          revisionProgress = 40
+          revisionProgress = 0
         }
       } else {
-        revisionProgress = 30
+        revisionProgress = 0
       }
     } catch (e) {
       console.warn('Unable to calculate revision checklists:', e)
-      revisionProgress = 25
+      revisionProgress = 0
     }
 
     // --- 6. Calculate Semester Readiness Index ---
@@ -213,23 +203,32 @@ export async function GET() {
 
     // --- 7. Call Gemini for Advisory recommendations ---
     let advisory: AdvisoryItem[] = []
-    try {
-      const statsSummaryStr = `
-        Study Hours logged: ${totalStudyHours} hours
-        Syllabus Topic Coverage: ${topicCoverage}%
-        Total Knowledge Base Nodes: ${knowledgeGrowth} entities
-        Quiz Performance Average: ${quizPerformance}%
-        Revision Checklist Progress: ${revisionProgress}%
-        Computed Semester Readiness: ${semesterReadiness}%
-      `
-      const aiResponse = await generateAcademicRecommendations(statsSummaryStr, memoryContextStr || undefined)
-      advisory = aiResponse.recommendations || []
-    } catch (err) {
-      console.warn('Gemini advisor failed, using default tips:', err)
+    
+    // Only call Gemini if user has some actual metrics, otherwise return onboarding advisor tips
+    const hasData = totalStudyHours > 0 || topicCoverage > 0 || knowledgeGrowth > 0 || quizPerformance > 0 || revisionProgress > 0
+    
+    if (hasData) {
+      try {
+        const statsSummaryStr = `
+          Study Hours logged: ${totalStudyHours} hours
+          Syllabus Topic Coverage: ${topicCoverage}%
+          Total Knowledge Base Nodes: ${knowledgeGrowth} entities
+          Quiz Performance Average: ${quizPerformance}%
+          Revision Checklist Progress: ${revisionProgress}%
+          Computed Semester Readiness: ${semesterReadiness}%
+        `
+        const aiResponse = await generateAcademicRecommendations(statsSummaryStr, memoryContextStr || undefined)
+        advisory = aiResponse.recommendations || []
+      } catch (err) {
+        console.warn('Gemini advisor failed, using fallback onboarding tips:', err)
+      }
+    }
+
+    if (advisory.length === 0) {
       advisory = [
-        { title: "Increase revision checklist pacing", priority: "high", actionTip: "You have completed under 30% of active recall checklists. Complete 2 tasks daily to stay on course." },
-        { title: "Take placement assessment tests", priority: "medium", actionTip: "Log a mock DSA or aptitude test in Placement Prep to benchmark learning performance." },
-        { title: "Expand knowledge notes database", priority: "low", actionTip: "Ingest your syllabus chapters or coursework slides to populate vector contexts." }
+        { title: "Record your first study session", priority: "high", actionTip: "Log a focus session with the stopwatch timer on the analytics dashboard to start monitoring study hours." },
+        { title: "Create a study planner or upload notes", priority: "medium", actionTip: "Upload your notes or syllabus files in Brain and generate a study plan to map your progress." },
+        { title: "Attempt a placement prep test", priority: "low", actionTip: "Take a mock coding or aptitude test in the Placement Prep module to benchmark performance." }
       ]
     }
 

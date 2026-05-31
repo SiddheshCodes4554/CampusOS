@@ -509,7 +509,9 @@ export default function AnalyticsDashboardPage() {
                   <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">
                     {data.metrics.semesterReadiness}%
                   </span>
-                  <span className="text-[7.5px] uppercase font-bold text-[var(--text-muted)]">Ready</span>
+                  <span className="text-[7.5px] uppercase font-bold text-[var(--text-muted)]">
+                    {data.metrics.semesterReadiness > 0 ? 'Ready' : 'Offline'}
+                  </span>
                 </div>
               </div>
             </GlassCard>
@@ -650,47 +652,56 @@ export default function AnalyticsDashboardPage() {
 
               {/* Area SVG Chart */}
               <div className="w-full flex justify-center py-1">
-                <svg className="w-full max-w-[320px] h-[150px]" viewBox="0 0 340 150">
-                  {/* Grid background lines */}
-                  <line x1="40" y1="40" x2="340" y2="40" stroke="rgba(255,255,255,0.03)" strokeDasharray="3,3" />
-                  <line x1="40" y1="90" x2="340" y2="90" stroke="rgba(255,255,255,0.03)" strokeDasharray="3,3" />
-                  <line x1="40" y1="140" x2="340" y2="140" stroke="rgba(255,255,255,0.05)" />
+                {Object.values(data.weeklyStudyHours).reduce((acc, curr) => acc + curr, 0) > 0 ? (
+                  <svg className="w-full max-w-[320px] h-[150px]" viewBox="0 0 340 150">
+                    {/* Grid background lines */}
+                    <line x1="40" y1="40" x2="340" y2="40" stroke="rgba(255,255,255,0.03)" strokeDasharray="3,3" />
+                    <line x1="40" y1="90" x2="340" y2="90" stroke="rgba(255,255,255,0.03)" strokeDasharray="3,3" />
+                    <line x1="40" y1="140" x2="340" y2="140" stroke="rgba(255,255,255,0.05)" />
 
-                  <defs>
-                    <linearGradient id="glowAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(6, 182, 212, 0.22)" />
-                      <stop offset="100%" stopColor="rgba(6, 182, 212, 0)" />
-                    </linearGradient>
-                  </defs>
+                    <defs>
+                      <linearGradient id="glowAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgba(6, 182, 212, 0.22)" />
+                        <stop offset="100%" stopColor="rgba(6, 182, 212, 0)" />
+                      </linearGradient>
+                    </defs>
 
-                  {/* Area fill */}
-                  {velocityArea && <path d={velocityArea} fill="url(#glowAreaGradient)" />}
-                  {/* Line path */}
-                  {velocityLine && <path d={velocityLine} fill="none" stroke="rgba(6, 182, 212, 0.85)" strokeWidth="2.5" strokeLinecap="round" />}
+                    {/* Area fill */}
+                    {velocityArea && <path d={velocityArea} fill="url(#glowAreaGradient)" />}
+                    {/* Line path */}
+                    {velocityLine && <path d={velocityLine} fill="none" stroke="rgba(6, 182, 212, 0.85)" strokeWidth="2.5" strokeLinecap="round" />}
 
-                  {/* Data points dots */}
-                  {Object.keys(data.weeklyStudyHours).map((key, idx) => {
-                    const hours = data.weeklyStudyHours[key] || 0
-                    const x = 40 + idx * 50
-                    const y = 140 - Math.min(100, hours * 10)
-                    return (
-                      <g key={idx} className="group cursor-pointer">
-                        <circle cx={x} cy={y} r="3" fill="#06b6d4" className="transition-transform group-hover:scale-125" />
-                        <title>{`${key}: ${hours}h`}</title>
-                      </g>
-                    )
-                  })}
+                    {/* Data points dots */}
+                    {Object.keys(data.weeklyStudyHours).map((key, idx) => {
+                      const hours = data.weeklyStudyHours[key] || 0
+                      const x = 40 + idx * 50
+                      const y = 140 - Math.min(100, hours * 10)
+                      return (
+                        <g key={idx} className="group cursor-pointer">
+                          <circle cx={x} cy={y} r="3" fill="#06b6d4" className="transition-transform group-hover:scale-125" />
+                          <title>{`${key}: ${hours}h`}</title>
+                        </g>
+                      )
+                    })}
 
-                  {/* Horizontal Labels */}
-                  {Object.keys(data.weeklyStudyHours).map((key, idx) => {
-                    const x = 40 + idx * 50
-                    return (
-                      <text key={idx} x={x} y="148" textAnchor="middle" fill="#6b7280" className="text-[7.5px] font-bold font-mono">
-                        {key}
-                      </text>
-                    )
-                  })}
-                </svg>
+                    {/* Horizontal Labels */}
+                    {Object.keys(data.weeklyStudyHours).map((key, idx) => {
+                      const x = 40 + idx * 50
+                      return (
+                        <text key={idx} x={x} y="148" textAnchor="middle" fill="#6b7280" className="text-[7.5px] font-bold font-mono">
+                          {key}
+                        </text>
+                      )
+                    })}
+                  </svg>
+                ) : (
+                  <div className="w-full h-[150px] flex flex-col items-center justify-center text-center select-none">
+                    <Clock className="text-cyan-500/20 mb-2" size={24} />
+                    <p className="text-[10px] text-[var(--text-muted)] max-w-[200px] leading-relaxed">
+                      No study history this week. Log focus sessions using the stopwatch timer above to construct your velocity curves.
+                    </p>
+                  </div>
+                )}
               </div>
             </GlassCard>
 

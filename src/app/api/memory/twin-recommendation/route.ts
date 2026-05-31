@@ -78,15 +78,21 @@ export async function GET() {
       console.warn('Twin API: notes table not available.', e)
     }
 
-    // Fallbacks if user profile is brand new / has no history
-    if (quizList.length === 0) {
-      quizList = ['Practice Quiz on Recursion: Score 60%', 'Quiz on Database Normalization: Score 55%']
-    }
-    if (projectList.length === 0) {
-      projectList = ['Portfolio Project: CampusOS Digital Twin core']
-    }
-    if (weakAreas.length === 0) {
-      weakAreas = ['Recursion', 'Database Normalization']
+    // If the student has zero notes and zero quizzes, render Academic Twin Offline
+    if (notesCount === 0 && quizList.length === 0) {
+      return NextResponse.json({
+        monologue: "Academic Twin Offline: Ingest materials to initialize cognitive telemetry",
+        decayAlerts: [],
+        priorityAction: "Upload notes or take a quiz to activate telemetry.",
+        projectRelevance: "",
+        telemetry: {
+          forgettingIndex: 0,
+          focusBattery: 0,
+          latencyMs: 0,
+          density: 0
+        },
+        offline: true
+      })
     }
 
     // 5. Generate projection from Gemini
@@ -100,28 +106,28 @@ export async function GET() {
     return NextResponse.json({
       ...projection,
       telemetry: {
-        forgettingIndex: 82 - (strongAreas.length * 4) + (weakAreas.length * 5),
-        focusBattery: 90,
+        forgettingIndex: Math.max(0, 82 - (strongAreas.length * 4) + (weakAreas.length * 5)),
+        focusBattery: 100,
         latencyMs: 140 + (weakAreas.length * 20),
-        density: Math.min(100, 15 + (notesCount * 5) + (strongAreas.length * 8))
+        density: Math.min(100, (notesCount * 5) + (strongAreas.length * 8))
       }
     })
 
   } catch (error: unknown) {
     console.error('Twin Projection API Error:', error instanceof Error ? error.message : error)
     
-    // Ultimate mock fallback to ensure the UI NEVER breaks
     return NextResponse.json({
-      monologue: "I notice our cognitive focus levels are high today, but our memory retention in Recursive Algorithms is starting to degrade. We should dedicate 30 minutes to review Binary Trees before attempting another Mock DSA test.",
-      decayAlerts: ["Recursive Algorithms (74% retention)", "Database Normalization (52% retention)"],
-      priorityAction: "Spend 25 minutes reviewing Recursion in notes, then run a Mock DSA Quiz.",
-      projectRelevance: "Our active portfolio project ('CampusOS Digital Twin') requires clean tree traversals, aligning with our Recursion focus.",
+      monologue: "Academic Twin Offline: Ingest materials to initialize cognitive telemetry",
+      decayAlerts: [],
+      priorityAction: "Upload notes or take a quiz to activate telemetry.",
+      projectRelevance: "",
       telemetry: {
-        forgettingIndex: 78,
-        focusBattery: 85,
-        latencyMs: 180,
-        density: 45
-      }
+        forgettingIndex: 0,
+        focusBattery: 0,
+        latencyMs: 0,
+        density: 0
+      },
+      offline: true
     })
   }
 }

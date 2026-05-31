@@ -1,6 +1,7 @@
 import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
+import { OnboardingWrapper } from '@/components/dashboard/OnboardingWrapper'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -17,14 +18,18 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     .eq('id', user?.id || '')
     .single()
 
+  const onboardingCompleted = profile?.onboarding_completed ?? false
+
   return (
-    <DashboardShell
-      userEmail={user?.email || 'student@campus.edu'}
-      userName={profile?.full_name || 'Student'}
-      university={profile?.university || 'Stanford University'}
-      major={profile?.major || 'Computer Science'}
-    >
-      {children}
-    </DashboardShell>
+    <OnboardingWrapper initialCompleted={onboardingCompleted}>
+      <DashboardShell
+        userEmail={user?.email || 'student@campus.edu'}
+        userName={profile?.full_name || 'Student'}
+        university={profile?.university || 'Stanford University'}
+        major={profile?.major || 'Computer Science'}
+      >
+        {children}
+      </DashboardShell>
+    </OnboardingWrapper>
   )
 }
