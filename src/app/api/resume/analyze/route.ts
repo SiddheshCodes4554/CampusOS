@@ -1,24 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-interface GeminiRequestBody {
-  contents: Array<{
-    parts: Array<{
-      inlineData?: {
-        mimeType: string
-        data: string
-      }
-      text?: string
-    }>
-  }>
-  systemInstruction?: {
-    parts: Array<{ text: string }>
-  }
-  generationConfig?: {
-    responseMimeType: string
-    responseSchema: object
-  }
-}
 
 export async function POST(request: Request) {
   try {
@@ -40,10 +22,6 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const base64Data = buffer.toString('base64')
-
-    // Call Gemini API with direct base64 document attachment
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
 
     const systemInstruction = 
       'You are a premier college resume reviewer and ATS checker. You analyze resumes for formatting, content, keywords, and job matchings. Returns output strictly matching the JSON schema.'
@@ -71,46 +49,16 @@ export async function POST(request: Request) {
       required: ["score", "missingSkills", "improvements", "careerSuggestions"]
     }
 
-    const requestBody: GeminiRequestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              inlineData: {
-                mimeType: "application/pdf",
-                data: base64Data
-              }
-            },
-            {
-              text: promptText
-            }
-          ]
-        }
-      ],
-      systemInstruction: {
-        parts: [{ text: systemInstruction }]
-      },
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema
-      }
-    }
-
-    const geminiRes = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    })
-
-    if (!geminiRes.ok) {
-      const errorText = await geminiRes.text()
-      throw new Error(`Gemini API Error: ${geminiRes.status} - ${errorText}`)
-    }
-
-    const data = await geminiRes.json()
-    const aiOutput = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    // Call standardized Gemini multimodal service client (handles rate limits & backoff retries)
+    const { callGeminiMultimodal } = await import('@/lib/gemini/client')
+    const aiOutput = await callGeminiMultimodal(
+      base64Data,
+      "application/pdf",
+      promptText,
+      systemInstruction,
+      responseSchema,
+      'resume_ats_audit'
+    )
     const parsedReport = JSON.parse(aiOutput)
 
     // Store in Supabase resume_reports table

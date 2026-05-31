@@ -3,24 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getEmbeddings } from '@/lib/gemini/embeddings'
 import { extractTextFromDocx, extractTextFromPptx } from '@/lib/gemini/extractors'
 
-interface GeminiRequestBody {
-  contents: Array<{
-    parts: Array<{
-      inlineData?: {
-        mimeType: string
-        data: string
-      }
-      text?: string
-    }>
-  }>
-  systemInstruction?: {
-    parts: Array<{ text: string }>
-  }
-  generationConfig?: {
-    responseMimeType?: string
-    responseSchema?: object
-  }
-}
 
 /**
  * Helper to split text into overlapping semantic-aware chunks.
@@ -65,9 +47,6 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized session.' }, { status: 401 })
     }
-
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
 
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -146,41 +125,19 @@ export async function POST(request: Request) {
     } else if (extension === 'txt') {
       extractedMarkdown = buffer.toString('utf8')
     } else {
-      // PDF or fallback: Call Gemini Multimodal parsing (which automatically performs OCR)
-      const extractRequestBody: GeminiRequestBody = {
-        contents: [
-          {
-            parts: [
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64Data
-                }
-              },
-              {
-                text: "Extract all text, headers, checklists, equations, and tables from this academic file. Return the document content formatted as clean, structured Markdown. Do not wrap in extra markdown block formatting tags, just output clean text content."
-              }
-            ]
-          }
-        ],
-        systemInstruction: {
-          parts: [{ text: "You are an expert academic text extractor. You parse documents into structurally correct Markdown." }]
-        }
-      }
-
-      const extractRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(extractRequestBody)
-      })
-
-      if (!extractRes.ok) {
-        const errText = await extractRes.text()
-        throw new Error(`Gemini Extraction failed: ${extractRes.status} - ${errText}`)
-      }
-
-      const extractData = await extractRes.json()
-      extractedMarkdown = extractData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      // PDF or fallback: Call Gemini Multimodal parsing via service layer (handles OCR, rate-limiting & retries)
+      const { callGeminiMultimodal } = await import('@/lib/gemini/client')
+      const extractPrompt = "Extract all text, headers, checklists, equations, and tables from this academic file. Return the document content formatted as clean, structured Markdown. Do not wrap in extra markdown block formatting tags, just output clean text content."
+      const extractSysInst = "You are an expert academic text extractor. You parse documents into structurally correct Markdown."
+      
+      extractedMarkdown = await callGeminiMultimodal(
+        base64Data,
+        mimeType,
+        extractPrompt,
+        extractSysInst,
+        undefined,
+        'brain_ingest_ocr'
+      )
     }
 
     if (!extractedMarkdown.trim()) {
@@ -189,7 +146,50 @@ export async function POST(request: Request) {
 
     // 4. Create chunks and generate vector embeddings
     const chunks = chunkText(extractedMarkdown)
-    const embeddings = await getEmbeddings(chunks)
+    
+    // Embedding Cache Lookup (Embedding Reuse Optimization from Case Study)
+    const uniqueChunks = Array.from(new Set(chunks))
+    const cachedEmbeddingMap = new Map<string, number[]>()
+
+    if (uniqueChunks.length > 0) {
+      try {
+        const { data: cachedChunks, error: cacheErr } = await supabase
+          .from('brain_chunks')
+          .select('content, embedding')
+          .in('content', uniqueChunks)
+
+        if (!cacheErr && cachedChunks) {
+          for (const cc of cachedChunks) {
+            let embeddingVector: number[] = []
+            if (typeof cc.embedding === 'string') {
+              embeddingVector = cc.embedding.replace(/[\[\]]/g, '').split(',').map(Number)
+            } else if (Array.isArray(cc.embedding)) {
+              embeddingVector = cc.embedding
+            }
+            if (embeddingVector.length > 0) {
+              cachedEmbeddingMap.set(cc.content, embeddingVector)
+            }
+          }
+        }
+      } catch (cacheFetchErr) {
+        console.warn('Database embedding cache lookup failed, generating fresh embeddings:', cacheFetchErr)
+      }
+    }
+
+    const chunksToEmbed = chunks.filter(c => !cachedEmbeddingMap.has(c))
+    let newEmbeddings: number[][] = []
+    if (chunksToEmbed.length > 0) {
+      newEmbeddings = await getEmbeddings(chunksToEmbed)
+    }
+
+    let newEmbeddingsIdx = 0
+    const embeddings = chunks.map(c => {
+      if (cachedEmbeddingMap.has(c)) {
+        return cachedEmbeddingMap.get(c)!
+      } else {
+        return newEmbeddings[newEmbeddingsIdx++]
+      }
+    })
 
     // 5. Save chunks to brain_chunks in batch
     const chunksToInsert = chunks.map((content, idx) => ({
@@ -240,34 +240,17 @@ export async function POST(request: Request) {
       required: ["nodes", "edges"]
     }
 
-    const graphRequestBody: GeminiRequestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: `Analyze the following academic document contents and extract key concepts, courses, equations, and milestones as Graph Nodes. Map relationships between them (like 'prerequisite of' or 'covers') as Graph Edges. Return output strictly matching the JSON schema.\n\nDOCUMENT CONTENTS:\n${extractedMarkdown}`
-            }
-          ]
-        }
-      ],
-      systemInstruction: {
-        parts: [{ text: "You are a professional software architect mapping knowledge networks from study materials." }]
-      },
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: graphSchema
-      }
-    }
-
-    const graphRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(graphRequestBody)
-    })
-
-    if (graphRes.ok) {
-      const graphData = await graphRes.json()
-      const rawGraphText = graphData.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+    const graphPrompt = `Analyze the following academic document contents and extract key concepts, courses, equations, and milestones as Graph Nodes. Map relationships between them (like 'prerequisite of' or 'covers') as Graph Edges. Return output strictly matching the JSON schema.\n\nDOCUMENT CONTENTS:\n${extractedMarkdown}`
+    const graphSysInst = "You are a professional software architect mapping knowledge networks from study materials."
+    
+    try {
+      const { callGemini } = await import('@/lib/gemini/client')
+      const rawGraphText = await callGemini(
+        graphPrompt,
+        graphSysInst,
+        graphSchema,
+        'brain_ingest_graph'
+      )
       const parsedGraph = JSON.parse(rawGraphText)
 
       if (parsedGraph.nodes && parsedGraph.nodes.length > 0) {
@@ -314,8 +297,8 @@ export async function POST(request: Request) {
           }
         }
       }
-    } else {
-      console.warn('Knowledge Graph extraction skipped/failed, proceeding without graph nodes.')
+    } catch (graphErr: unknown) {
+      console.warn('Knowledge Graph extraction skipped/failed, proceeding without graph nodes:', graphErr)
     }
 
     // 7. Update document processed status

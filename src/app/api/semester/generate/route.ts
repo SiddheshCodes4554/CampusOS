@@ -2,24 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { extractTextFromDocx, extractTextFromPptx } from '@/lib/gemini/extractors'
 
-interface GeminiRequestBody {
-  contents: Array<{
-    parts: Array<{
-      inlineData?: {
-        mimeType: string
-        data: string
-      }
-      text?: string
-    }>
-  }>
-  systemInstruction?: {
-    parts: Array<{ text: string }>
-  }
-  generationConfig?: {
-    responseMimeType?: string
-    responseSchema?: object
-  }
-}
 
 export async function POST(request: Request) {
   try {
@@ -78,9 +60,6 @@ export async function POST(request: Request) {
     let extractedSyllabusText = ''
     const extension = file.name.split('.').pop()?.toLowerCase()
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
-
     if (extension === 'docx') {
       extractedSyllabusText = await extractTextFromDocx(buffer)
     } else if (extension === 'pptx') {
@@ -88,41 +67,19 @@ export async function POST(request: Request) {
     } else if (extension === 'txt') {
       extractedSyllabusText = buffer.toString('utf8')
     } else {
-      // PDF or Image fallback: Call Gemini Multimodal parsing to extract clean text
-      const extractRequestBody: GeminiRequestBody = {
-        contents: [
-          {
-            parts: [
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64Data
-                }
-              },
-              {
-                text: "Extract all structural units, module topics, grading distributions, and practical lab assignments from this syllabus file. Format the result as clean Markdown text."
-              }
-            ]
-          }
-        ],
-        systemInstruction: {
-          parts: [{ text: "You are a professional course syllabus text extraction assistant." }]
-        }
-      }
-
-      const extractRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(extractRequestBody)
-      })
-
-      if (!extractRes.ok) {
-        const errText = await extractRes.text()
-        throw new Error(`Syllabus Extraction failed: ${extractRes.status} - ${errText}`)
-      }
-
-      const extractData = await extractRes.json()
-      extractedSyllabusText = extractData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      // PDF or Image fallback: Call Gemini Multimodal parsing to extract clean text via service layer
+      const { callGeminiMultimodal } = await import('@/lib/gemini/client')
+      const extractPrompt = "Extract all structural units, module topics, grading distributions, and practical lab assignments from this syllabus file. Format the result as clean Markdown text."
+      const extractSysInst = "You are a professional course syllabus text extraction assistant."
+      
+      extractedSyllabusText = await callGeminiMultimodal(
+        base64Data,
+        mimeType,
+        extractPrompt,
+        extractSysInst,
+        undefined,
+        'semester_syllabus_ocr'
+      )
     }
 
     if (!extractedSyllabusText.trim()) {
@@ -262,39 +219,17 @@ export async function POST(request: Request) {
       ]
     }
 
-    // 4. Generate structured roadmaps and calendar prep from syllabus text
-    const copilotRequestBody: GeminiRequestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: `Analyze the following syllabus text. Understand course topics, marks weightings, and practical labs. Generate a detailed semester schedule, weekly topics, daily study checklists, spaced repetition revision sessions, and internal/final exam test preparations. Return output strictly matching the JSON schema.\n\nSYLLABUS CONTENT:\n${extractedSyllabusText}`
-            }
-          ]
-        }
-      ],
-      systemInstruction: {
-        parts: [{ text: "You are an expert college academic dean and curriculum planner. You design structured study roadmaps from syllabi." }]
-      },
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema
-      }
-    }
-
-    const copilotRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(copilotRequestBody)
-    })
-
-    if (!copilotRes.ok) {
-      const errText = await copilotRes.text()
-      throw new Error(`Gemini Copilot generation failed: ${copilotRes.status} - ${errText}`)
-    }
-
-    const copilotData = await copilotRes.json()
-    const rawCopilotText = copilotData.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+    // 4. Generate structured roadmaps and calendar prep from syllabus text via service layer
+    const copilotPrompt = `Analyze the following syllabus text. Understand course topics, marks weightings, and practical labs. Generate a detailed semester schedule, weekly topics, daily study checklists, spaced repetition revision sessions, and internal/final exam test preparations. Return output strictly matching the JSON schema.\n\nSYLLABUS CONTENT:\n${extractedSyllabusText}`
+    const copilotSysInst = "You are an expert college academic dean and curriculum planner. You design structured study roadmaps from syllabi."
+    
+    const { callGemini } = await import('@/lib/gemini/client')
+    const rawCopilotText = await callGemini(
+      copilotPrompt,
+      copilotSysInst,
+      responseSchema,
+      'semester_plan_generate'
+    )
     const parsedCopilot = JSON.parse(rawCopilotText)
 
     // 5. Store in Supabase semester_plans table

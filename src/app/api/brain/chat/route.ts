@@ -2,20 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { queryAcademicBrain } from '@/lib/gemini/retrieval'
 
-interface GeminiRequestBody {
-  contents: Array<{
-    parts: Array<{
-      text?: string
-    }>
-  }>
-  systemInstruction?: {
-    parts: Array<{ text: string }>
-  }
-  generationConfig?: {
-    responseMimeType?: string
-    responseSchema?: object
-  }
-}
 
 export async function POST(request: Request) {
   try {
@@ -26,11 +12,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized session.' }, { status: 401 })
     }
 
-    const { query, history } = await request.json()
+    const { query: rawQuery, history } = await request.json()
 
-    if (!query) {
+    if (!rawQuery) {
       return NextResponse.json({ error: 'Query parameter is required.' }, { status: 400 })
     }
+
+    const { sanitizeInput, callGemini } = await import('@/lib/gemini/client')
+    const query = sanitizeInput(rawQuery)
 
     // 1. Fetch retrieval context from Academic Brain RAG Engine
     const brain = await queryAcademicBrain(user.id, query, 5)
@@ -59,9 +48,6 @@ export async function POST(request: Request) {
     }
 
     // 3. Formulate Prompt & Constraints
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
-
     const systemInstruction = 
       `You are the CampusOS Academic Brain Chat Copilot. Your goal is to answer student questions STRICKLY using the retrieved context from their uploaded notes, syllabus, assignments, and slides.
 
@@ -87,36 +73,8 @@ Rules:
 
     prompt += `Student Query: ${query}`
 
-    const requestBody: GeminiRequestBody = {
-      contents: [
-        {
-          parts: [
-            { text: prompt }
-          ]
-        }
-      ],
-      systemInstruction: {
-        parts: [{ text: systemInstruction }]
-      },
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema
-      }
-    }
-
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    })
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text()
-      throw new Error(`Gemini Chat failed: ${geminiRes.status} - ${errText}`)
-    }
-
-    const data = await geminiRes.json()
-    const rawChatText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+    // Call standardized Gemini service client
+    const rawChatText = await callGemini(prompt, systemInstruction, responseSchema, 'brain_chat')
     const parsedChat = JSON.parse(rawChatText)
 
     return NextResponse.json(parsedChat)
