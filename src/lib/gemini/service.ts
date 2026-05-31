@@ -717,3 +717,85 @@ export async function generateExamAnalysis(subjectName: string, compiledText: st
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'exam_intelligence_analyze')
   return JSON.parse(aiOutput)
 }
+
+// ----------------------------------------------------
+// 6. REVISION MODE SERVICE
+// ----------------------------------------------------
+export async function generateRevisionPlan(subjectName: string, durationDays: number, compiledText: string) {
+  const systemInstruction = 
+    'You are an expert academic study planner and spaced repetition coach. Based on the provided syllabus, notes, and coursework text, generate a complete, structured revision plan. The plan must include: critical concepts, potential weak topics with study tips, a day-by-day revision checklist, active recall flashcards, and a self-grading mock test. Output must strictly match the JSON schema structure.'
+
+  const prompt = `Create a ${durationDays}-day revision plan for the subject: "${subjectName}". Schedule topics into day-by-day intervals (from Day 1 to Day ${durationDays}). Use the following source materials as the primary context:\n\n${compiledText}`
+
+  const responseSchema = {
+    type: "object",
+    properties: {
+      subject: { type: "string" },
+      durationDays: { type: "integer" },
+      concepts: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            conceptName: { type: "string" },
+            definition: { type: "string" },
+            formulaOrExample: { type: "string" }
+          },
+          required: ["conceptName", "definition", "formulaOrExample"]
+        }
+      },
+      weakTopics: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            topicName: { type: "string" },
+            difficultyReason: { type: "string" },
+            revisionTip: { type: "string" }
+          },
+          required: ["topicName", "difficultyReason", "revisionTip"]
+        }
+      },
+      checklist: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            dayNumber: { type: "integer" },
+            task: { type: "string" },
+            details: { type: "string" }
+          },
+          required: ["id", "dayNumber", "task", "details"]
+        }
+      },
+      flashcards: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            front: { type: "string" },
+            back: { type: "string" }
+          },
+          required: ["front", "back"]
+        }
+      },
+      mockTest: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            question: { type: "string" },
+            marks: { type: "integer" },
+            idealAnswerOutline: { type: "string" }
+          },
+          required: ["question", "marks", "idealAnswerOutline"]
+        }
+      }
+    },
+    required: ["subject", "durationDays", "concepts", "weakTopics", "checklist", "flashcards", "mockTest"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'revision_plan_generate')
+  return JSON.parse(aiOutput)
+}

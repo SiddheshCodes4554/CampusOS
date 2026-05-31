@@ -19,7 +19,8 @@ import {
   LogOut,
   Compass,
   MessageSquare,
-  Flame
+  Flame,
+  RefreshCw
 } from 'lucide-react'
 import { useDashboardStore } from '@/store/useDashboardStore'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
     { name: 'Semester Copilot', href: '/semester', icon: Compass },
     { name: 'Exam Prep', href: '/exam', icon: Flame },
     { name: 'Study Planner', href: '/planner', icon: Calendar },
+    { name: 'Revision Mode', href: '/revision', icon: RefreshCw },
     { name: 'Resume Analyzer', href: '/resume', icon: FileText },
     { name: 'Project Builder', href: '/projects', icon: Cpu },
     { name: 'Internship Tracker', href: '/internships', icon: Briefcase },
