@@ -17,8 +17,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Subject, exam date, and daily hours are required.' }, { status: 400 })
     }
 
+    // Fetch student memory profile for personalization
+    let memoryContextStr = ''
+    try {
+      const { data: memoryProfile } = await supabase
+        .from('student_memory')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+      if (memoryProfile) {
+        memoryContextStr = JSON.stringify({
+          preferredStudyTime: memoryProfile.preferred_study_time,
+          averageFocusDuration: memoryProfile.average_focus_duration,
+          weakAreas: memoryProfile.weak_areas,
+          strongAreas: memoryProfile.strong_areas,
+          cognitiveProfile: memoryProfile.cognitive_profile
+        })
+      }
+    } catch (e) {
+      console.warn('Memory Profile retrieval skipped for study plan generation:', e)
+    }
+
     // Call Centralized Study Planner Service to get structured plan JSON
-    const parsedRoadmap = await generateStudyPlan(subject, examDate, dailyHours)
+    const parsedRoadmap = await generateStudyPlan(subject, examDate, dailyHours, memoryContextStr || undefined)
 
     // Store in Supabase study_plans table
     const { data: studyPlan, error: dbError } = await supabase

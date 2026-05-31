@@ -21,7 +21,8 @@ import {
   MessageSquare,
   Flame,
   RefreshCw,
-  LineChart
+  LineChart,
+  Database
 } from 'lucide-react'
 import { useDashboardStore } from '@/store/useDashboardStore'
 import { cn } from '@/lib/utils'
@@ -39,7 +40,8 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Academic Brain', href: '/brain', icon: Brain },
+    { name: 'Academic Brain', href: '/brain', icon: Database },
+    { name: 'Memory Profile', href: '/memory', icon: Brain },
     { name: 'Academic Chat', href: '/chat', icon: MessageSquare },
     { name: 'Semester Copilot', href: '/semester', icon: Compass },
     { name: 'Exam Prep', href: '/exam', icon: Flame },

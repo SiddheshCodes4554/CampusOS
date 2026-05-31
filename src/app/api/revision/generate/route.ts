@@ -80,8 +80,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Selected study documents contain no parsed textual content.' }, { status: 400 })
     }
 
+    // Fetch student memory profile for personalization
+    let memoryContextStr = ''
+    try {
+      const { data: memoryProfile } = await supabase
+        .from('student_memory')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+      if (memoryProfile) {
+        memoryContextStr = JSON.stringify({
+          preferredStudyTime: memoryProfile.preferred_study_time,
+          averageFocusDuration: memoryProfile.average_focus_duration,
+          weakAreas: memoryProfile.weak_areas,
+          strongAreas: memoryProfile.strong_areas,
+          cognitiveProfile: memoryProfile.cognitive_profile
+        })
+      }
+    } catch (e) {
+      console.warn('Memory Profile retrieval skipped for revision plan generation:', e)
+    }
+
     // 3. Trigger Revision Planner Analysis
-    const aiReport = await generateRevisionPlan(subjectName, days, compiledContext)
+    const aiReport = await generateRevisionPlan(subjectName, days, compiledContext, memoryContextStr || undefined)
 
     // 4. Save analysis results to Supabase Database
     const { data: savedPlan, error: saveError } = await supabase

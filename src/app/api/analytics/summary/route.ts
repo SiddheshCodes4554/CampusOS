@@ -190,6 +190,27 @@ export async function GET() {
       actionTip: string
     }
 
+    // Fetch student memory profile for personalization
+    let memoryContextStr = ''
+    try {
+      const { data: memoryProfile } = await supabase
+        .from('student_memory')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+      if (memoryProfile) {
+        memoryContextStr = JSON.stringify({
+          preferredStudyTime: memoryProfile.preferred_study_time,
+          averageFocusDuration: memoryProfile.average_focus_duration,
+          weakAreas: memoryProfile.weak_areas,
+          strongAreas: memoryProfile.strong_areas,
+          cognitiveProfile: memoryProfile.cognitive_profile
+        })
+      }
+    } catch (e) {
+      console.warn('Memory Profile retrieval skipped for advisory generation:', e)
+    }
+
     // --- 7. Call Gemini for Advisory recommendations ---
     let advisory: AdvisoryItem[] = []
     try {
@@ -201,7 +222,7 @@ export async function GET() {
         Revision Checklist Progress: ${revisionProgress}%
         Computed Semester Readiness: ${semesterReadiness}%
       `
-      const aiResponse = await generateAcademicRecommendations(statsSummaryStr)
+      const aiResponse = await generateAcademicRecommendations(statsSummaryStr, memoryContextStr || undefined)
       advisory = aiResponse.recommendations || []
     } catch (err) {
       console.warn('Gemini advisor failed, using default tips:', err)

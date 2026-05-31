@@ -22,7 +22,7 @@ async function getBrainContext(query: string, limit: number = 3): Promise<string
 // ----------------------------------------------------
 // 1. STUDY PLANNER SERVICE
 // ----------------------------------------------------
-export async function generateStudyPlan(subject: string, examDate: string, dailyHours: string) {
+export async function generateStudyPlan(subject: string, examDate: string, dailyHours: string, memoryContext?: string) {
   const brainContext = await getBrainContext(`${subject} syllabus coursework exam`)
 
   const systemInstruction = 
@@ -32,6 +32,10 @@ export async function generateStudyPlan(subject: string, examDate: string, daily
 
   if (brainContext) {
     prompt += `\n\nUse the following extracted student study records and syllabus metrics as the primary source of truth for planning topic details, weights, and priorities:\n${brainContext}`
+  }
+
+  if (memoryContext) {
+    prompt += `\n\nAdditionally, customize the study roadmap based on the student's Cognitive Memory Profile:\n${memoryContext}\nDesign daily tasks that match their cognitive profile, learning style, and average focus duration. Focus on strengthening weak areas and solidifying strong areas.`
   }
 
   const responseSchema = {
@@ -659,11 +663,15 @@ export async function evaluateMockInterviewFinal(history: Array<{ role: string; 
 // ----------------------------------------------------
 // 5. EXAM INTELLIGENCE ENGINE SERVICE
 // ----------------------------------------------------
-export async function generateExamAnalysis(subjectName: string, compiledText: string) {
+export async function generateExamAnalysis(subjectName: string, compiledText: string, memoryContext?: string) {
   const systemInstruction = 
     'You are an elite academic diagnostic examiner. Based on the provided syllabus, notes, and previous year exam papers, analyze repeated patterns, estimate topic weightage, map high-priority chapters, and predict probable questions. Output must strictly match the JSON schema structure.'
 
-  const prompt = `Perform an exam intelligence diagnostic analysis for the subject: "${subjectName}". Use the following source materials (syllabus, notes, past papers) as the primary context:\n\n${compiledText}`
+  let prompt = `Perform an exam intelligence diagnostic analysis for the subject: "${subjectName}". Use the following source materials (syllabus, notes, past papers) as the primary context:\n\n${compiledText}`
+
+  if (memoryContext) {
+    prompt += `\n\nAdditionally, incorporate the student's Cognitive Memory Profile to tailor the readiness metrics and diagnostic advice:\n${memoryContext}\nHighlight predicted questions or study strategies that directly address their diagnosed weak areas.`
+  }
 
   const responseSchema = {
     type: "object",
@@ -721,11 +729,15 @@ export async function generateExamAnalysis(subjectName: string, compiledText: st
 // ----------------------------------------------------
 // 6. REVISION MODE SERVICE
 // ----------------------------------------------------
-export async function generateRevisionPlan(subjectName: string, durationDays: number, compiledText: string) {
+export async function generateRevisionPlan(subjectName: string, durationDays: number, compiledText: string, memoryContext?: string) {
   const systemInstruction = 
     'You are an expert academic study planner and spaced repetition coach. Based on the provided syllabus, notes, and coursework text, generate a complete, structured revision plan. The plan must include: critical concepts, potential weak topics with study tips, a day-by-day revision checklist, active recall flashcards, and a self-grading mock test. Output must strictly match the JSON schema structure.'
 
-  const prompt = `Create a ${durationDays}-day revision plan for the subject: "${subjectName}". Schedule topics into day-by-day intervals (from Day 1 to Day ${durationDays}). Use the following source materials as the primary context:\n\n${compiledText}`
+  let prompt = `Create a ${durationDays}-day revision plan for the subject: "${subjectName}". Schedule topics into day-by-day intervals (from Day 1 to Day ${durationDays}). Use the following source materials as the primary context:\n\n${compiledText}`
+
+  if (memoryContext) {
+    prompt += `\n\nAdditionally, personalize this plan for the student based on their Cognitive Memory Profile:\n${memoryContext}\nFocus heavily on improving the identified weak areas and adapting to their average focus stamina and learning style.`
+  }
 
   const responseSchema = {
     type: "object",
@@ -803,11 +815,15 @@ export async function generateRevisionPlan(subjectName: string, durationDays: nu
 // ----------------------------------------------------
 // 7. ACADEMIC ANALYTICS SERVICE
 // ----------------------------------------------------
-export async function generateAcademicRecommendations(statsSummary: string) {
+export async function generateAcademicRecommendations(statsSummary: string, memoryContext?: string) {
   const systemInstruction = 
     'You are an expert academic advisor and study planner. Analyze the provided study metrics, topic coverage, quiz scores, and goals completion details to construct personalized, actionable academic recommendations. Categorize each recommendation with a priority level (high, medium, low) and provide a specific, practical action tip. Output must strictly match the JSON schema structure.'
 
-  const prompt = `Analyze my academic performance metrics and goals progress. Generate study focus recommendations based on these statistics:\n\n${statsSummary}`
+  let prompt = `Analyze my academic performance metrics and goals progress. Generate study focus recommendations based on these statistics:\n\n${statsSummary}`
+
+  if (memoryContext) {
+    prompt += `\n\nAdditionally, personalize these recommendations based on the student's Cognitive Memory Profile:\n${memoryContext}`
+  }
 
   const responseSchema = {
     type: "object",
@@ -829,5 +845,43 @@ export async function generateAcademicRecommendations(statsSummary: string) {
   }
 
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'analytics_recommendations')
+  return JSON.parse(aiOutput)
+}
+
+// ----------------------------------------------------
+// 8. CAMPUSOS COGNITIVE MEMORY SERVICE
+// ----------------------------------------------------
+export async function synthesizeStudentMemory(activityHistory: string) {
+  const systemInstruction = 
+    'You are an expert educational psychologist and cognitive learning modeler. Analyze the student event timeline and logs to synthesize a learning memory profile. Output must strictly fit the JSON schema.'
+
+  const prompt = `Synthesize my student learning memory profile based on the historical logs below:\n\n${activityHistory}`
+
+  const responseSchema = {
+    type: "object",
+    properties: {
+      preferredStudyTime: { type: "string" },
+      weakAreas: {
+        type: "array",
+        items: { type: "string" }
+      },
+      strongAreas: {
+        type: "array",
+        items: { type: "string" }
+      },
+      avgFocusDuration: { type: "integer" },
+      cognitiveProfile: {
+        type: "object",
+        properties: {
+          learningStyle: { type: "string" },
+          repetitionScale: { type: "string" }
+        },
+        required: ["learningStyle", "repetitionScale"]
+      }
+    },
+    required: ["preferredStudyTime", "weakAreas", "strongAreas", "avgFocusDuration", "cognitiveProfile"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'memory_profile_synthesize')
   return JSON.parse(aiOutput)
 }
