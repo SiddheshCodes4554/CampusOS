@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   Circle,
   Clock,
-  Plus
+  Plus,
+  Brain,
+  Activity
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -31,6 +33,18 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
     studyHoursTarget: 10,
     studyHoursAchieved: 8.2,
     streak: 14
+  })
+
+  // AI Twin status
+  const [twinStatus, setTwinStatus] = useState({
+    monologue: "Cognitive twin double online. Fetching neural telemetry...",
+    telemetry: {
+      forgettingIndex: 82,
+      focusBattery: 90,
+      latencyMs: 140,
+      density: 45
+    },
+    loading: true
   })
 
   // Notes list state
@@ -114,6 +128,21 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
               activeProject: projectData[0].title,
               projectProgress: 80
             }))
+          }
+
+          // Fetch Twin projections
+          try {
+            const twinRes = await fetch('/api/memory/twin-recommendation')
+            const twinData = await twinRes.json()
+            if (twinData && !twinData.error) {
+              setTwinStatus({
+                monologue: twinData.monologue,
+                telemetry: twinData.telemetry || { forgettingIndex: 82, focusBattery: 90, latencyMs: 140, density: 45 },
+                loading: false
+              })
+            }
+          } catch (err) {
+            console.warn('Dashboard: Failed to load twin status:', err)
           }
         }
       } catch (e) {
@@ -404,6 +433,61 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
 
       {/* RIGHT SIDEBAR PANEL (Weekly Activities & To-Do List) */}
       <div className="xl:col-span-1 flex flex-col gap-6">
+
+        {/* AI DIGITAL TWIN TELEMETRY WIDGET (NEW PREMIUM FEATURE) */}
+        <motion.div variants={itemVariants}>
+          <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[#12131A]/60 relative overflow-hidden group">
+            {/* Glowing neon bg orbs */}
+            <span className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-cyan-500/10 blur-xl group-hover:scale-125 transition-all" />
+            
+            <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
+              <h3 className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-primary)] flex items-center gap-1.5">
+                <Brain size={14} className="text-cyan-400 animate-pulse animate-duration-3000" />
+                AI Student Twin
+              </h3>
+              <span className="text-[7.5px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-1.5 py-0.5 rounded font-mono font-bold">
+                TELEMETRY
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4 py-1.5 select-none">
+              {/* Pulsing visual indicator */}
+              <div className="relative w-12 h-12 shrink-0 flex items-center justify-center rounded-full bg-cyan-500/5 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                <Activity size={16} className="text-cyan-400 animate-pulse" />
+                <span className="absolute inset-0 rounded-full border border-dashed border-cyan-500/30 animate-spin duration-10000" />
+              </div>
+
+              {/* Status metrics grid */}
+              <div className="grid grid-cols-3 gap-3 flex-1 text-center">
+                <div className="flex flex-col">
+                  <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">RETENTION</span>
+                  <span className="text-xs font-bold text-white mt-0.5">{twinStatus.telemetry.forgettingIndex}%</span>
+                </div>
+                <div className="flex flex-col border-l border-white/5">
+                  <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">BATTERY</span>
+                  <span className="text-xs font-bold text-white mt-0.5">{twinStatus.telemetry.focusBattery}%</span>
+                </div>
+                <div className="flex flex-col border-l border-white/5">
+                  <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">RECALL</span>
+                  <span className="text-xs font-bold text-white mt-0.5">{twinStatus.telemetry.latencyMs}ms</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Conversation monologue snippet */}
+            <div className="bg-black/25 border border-white/5 rounded-xl p-3 text-[10px] text-[var(--text-secondary)] leading-relaxed italic relative">
+              &ldquo;{twinStatus.monologue.length > 130 ? twinStatus.monologue.slice(0, 130) + '...' : twinStatus.monologue}&rdquo;
+            </div>
+
+            <Link
+              href="/memory"
+              className="w-full h-8 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none"
+            >
+              <span>Access Cognitive Core</span>
+              <ArrowRight size={10} />
+            </Link>
+          </GlassCard>
+        </motion.div>
         
         {/* A. WEEKLY ACTIVITIES: Donut Chart & Legend */}
         <motion.div variants={itemVariants}>

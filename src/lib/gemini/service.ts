@@ -885,3 +885,46 @@ export async function synthesizeStudentMemory(activityHistory: string) {
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'memory_profile_synthesize')
   return JSON.parse(aiOutput)
 }
+
+export async function generateTwinProjection(
+  profileSummary: string,
+  quizScores: string[],
+  activeProjects: string[],
+  notesCount: number
+) {
+  const systemInstruction = 
+    `You are the Student's AI Digital Twin (their cognitive double). Speak in a supportive, deeply intelligent, analytical first-person voice ('we', 'our', 'I'). Analyze their cognitive profile, weak areas, active projects, and notes count. Generate a first-person Twin Monologue, identify 2-3 specific topics currently decaying in memory, name a singular high-priority study action, and outline how their active projects link to their current academic focus. Keep the monologue concise (3-4 sentences), highly personalized, and direct.`
+
+  const prompt = `
+    Student cognitive profile summary:
+    ${profileSummary}
+
+    Recent Quiz Scores:
+    ${quizScores.length > 0 ? quizScores.join('\n') : 'No quiz attempts recorded.'}
+
+    Active Projects:
+    ${activeProjects.length > 0 ? activeProjects.join('\n') : 'No active projects.'}
+
+    Course Notes Ingested: ${notesCount} notes
+
+    Synthesize our digital twin projection.
+  `.trim()
+
+  const responseSchema = {
+    type: "object",
+    properties: {
+      monologue: { type: "string" },
+      decayAlerts: {
+        type: "array",
+        items: { type: "string" }
+      },
+      priorityAction: { type: "string" },
+      projectRelevance: { type: "string" }
+    },
+    required: ["monologue", "decayAlerts", "priorityAction", "projectRelevance"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'twin_projection_generate')
+  return JSON.parse(aiOutput)
+}
+
