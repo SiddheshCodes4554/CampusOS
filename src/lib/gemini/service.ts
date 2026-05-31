@@ -158,39 +158,42 @@ Ensure the PRD is comprehensive, rich in detail, and formatted beautifully in ma
 // ----------------------------------------------------
 // 3. SMART NOTES SERVICE
 // ----------------------------------------------------
-export async function generateNoteSummary(text: string) {
-  const brainContext = await getBrainContext(text.substring(0, 150))
-
+export async function generateGroundedSummary(text: string) {
   const systemInstruction = 
-    'You are an expert academic tutor. You summarize long study notes into concise, well-formatted Markdown bullet points. Include key takeaways, main definitions, and core concepts. Output should be returned in a clean JSON format matching the schema.'
+    'You are an expert academic tutor. You summarize long study notes and materials into concise, well-formatted Markdown bullet points. Include key takeaways, main definitions, and core concepts. You must base your output strictly on the provided text. You must also return a citations list matching specific facts to their document origins (use the file names provided in the text or state "Current Note" if not specified). Output must strictly match the JSON schema structure.'
   
-  let prompt = `Generate a detailed study summary for the following text:\n\n${text}`
-  if (brainContext) {
-    prompt += `\n\nCross-reference and enrich the summary with related concepts, formulas, and references retrieved from the Academic Brain:\n${brainContext}`
-  }
+  const prompt = `Generate a detailed study summary and source citations for the following text:\n\n${text}`
   
   const responseSchema = {
     type: "object",
     properties: {
-      summary: { type: "string" }
+      summary: { type: "string" },
+      citations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            fileName: { type: "string" },
+            pageNumber: { type: "integer" },
+            contentSnippet: { type: "string" },
+            confidence: { type: "integer" }
+          },
+          required: ["fileName", "contentSnippet", "confidence"]
+        }
+      }
     },
-    required: ["summary"]
+    required: ["summary", "citations"]
   }
 
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'notes_summarize')
   return JSON.parse(aiOutput)
 }
 
-export async function generateNoteQuiz(text: string) {
-  const brainContext = await getBrainContext(text.substring(0, 150))
-
+export async function generateGroundedQuiz(text: string) {
   const systemInstruction = 
-    'You are an expert academic coordinator. Based on the provided study materials, you generate 5 realistic multiple-choice practice quiz questions. Ensure that questions range in difficulty, cover important concepts in the text, and contain detailed helpful explanations for the correct answers. Output must strictly match the JSON schema structure.'
+    'You are an expert academic coordinator. Based on the provided study materials, generate 5 realistic multiple-choice practice quiz questions. Ensure that questions range in difficulty, cover important concepts in the text, and contain detailed helpful explanations for the correct answers. You must base your output strictly on the provided text. You must also return a citations list matching the questions to their document origins. Output must strictly match the JSON schema structure.'
   
-  let prompt = `Generate 5 multiple-choice practice quiz questions based on the following study materials:\n\n${text}`
-  if (brainContext) {
-    prompt += `\n\nIncorporate relevant formulas or exam focus structures retrieved from the Academic Brain:\n${brainContext}`
-  }
+  const prompt = `Generate 5 multiple-choice practice quiz questions and source citations based on the following study materials:\n\n${text}`
   
   const responseSchema = {
     type: "object",
@@ -210,25 +213,33 @@ export async function generateNoteQuiz(text: string) {
           },
           required: ["question", "options", "correctIndex", "explanation"]
         }
+      },
+      citations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            fileName: { type: "string" },
+            pageNumber: { type: "integer" },
+            contentSnippet: { type: "string" },
+            confidence: { type: "integer" }
+          },
+          required: ["fileName", "contentSnippet", "confidence"]
+        }
       }
     },
-    required: ["questions"]
+    required: ["questions", "citations"]
   }
 
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'notes_quiz')
   return JSON.parse(aiOutput)
 }
 
-export async function generateNoteFlashcards(text: string) {
-  const brainContext = await getBrainContext(text.substring(0, 150))
-
+export async function generateGroundedFlashcards(text: string) {
   const systemInstruction = 
-    'You are a study coordinator specialized in active recall and spaced repetition. You convert the study text into 5-10 direct flashcards. Each card has a specific "front" (question, term, or prompt) and a concise "back" (answer, explanation, or definition). Output must strictly match the JSON schema structure.'
+    'You are a study coordinator specialized in active recall and spaced repetition. You convert the study text into 5-10 direct flashcards. Each card has a specific "front" (question, term, or prompt) and a concise "back" (answer, explanation, or definition). You must base your output strictly on the provided text. You must also return a citations list matching the flashcards to their document origins. Output must strictly match the JSON schema structure.'
   
-  let prompt = `Generate 6-10 active recall flashcards based on the following study text:\n\n${text}`
-  if (brainContext) {
-    prompt += `\n\nCross-reference terms with the student's Academic Brain knowledge mapping:\n${brainContext}`
-  }
+  const prompt = `Generate 6-10 active recall flashcards and source citations based on the following study text:\n\n${text}`
   
   const responseSchema = {
     type: "object",
@@ -243,20 +254,162 @@ export async function generateNoteFlashcards(text: string) {
           },
           required: ["front", "back"]
         }
+      },
+      citations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            fileName: { type: "string" },
+            pageNumber: { type: "integer" },
+            contentSnippet: { type: "string" },
+            confidence: { type: "integer" }
+          },
+          required: ["fileName", "contentSnippet", "confidence"]
+        }
       }
     },
-    required: ["flashcards"]
+    required: ["flashcards", "citations"]
   }
 
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'notes_flashcards')
   return JSON.parse(aiOutput)
 }
 
-export async function queryNoteChat(text: string, query: string, history: Array<{ role: string; content: string }>) {
-  const brainContext = await getBrainContext(query, 4)
-
+export async function generateGroundedMCQs(text: string) {
   const systemInstruction = 
-    'You are a smart note copilot RAG assistant. You answer questions strictly using the provided study sources as your primary context. If the answer cannot be found in the provided sources, answer using your general knowledge but clearly state that the information was not in the student\'s notes. Keep your answers brief, structured, and student-focused.'
+    'You are an expert academic coordinator. Based on the provided study materials, generate 10 detailed multiple-choice questions (MCQs) for comprehensive coursework testing. Ensure that questions range in difficulty, cover important concepts, and contain detailed helpful explanations for the correct answers. You must base your output strictly on the provided text. You must also return a citations list matching the MCQs to their document origins. Output must strictly match the JSON schema structure.'
+  
+  const prompt = `Generate 10 multiple-choice questions (MCQs) and source citations based on the following study materials:\n\n${text}`
+  
+  const responseSchema = {
+    type: "object",
+    properties: {
+      questions: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            question: { type: "string" },
+            options: {
+              type: "array",
+              items: { type: "string" }
+            },
+            correctIndex: { type: "integer" },
+            explanation: { type: "string" }
+          },
+          required: ["question", "options", "correctIndex", "explanation"]
+        }
+      },
+      citations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            fileName: { type: "string" },
+            pageNumber: { type: "integer" },
+            contentSnippet: { type: "string" },
+            confidence: { type: "integer" }
+          },
+          required: ["fileName", "contentSnippet", "confidence"]
+        }
+      }
+    },
+    required: ["questions", "citations"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'notes_mcqs')
+  return JSON.parse(aiOutput)
+}
+
+export async function generateGroundedViva(text: string) {
+  const systemInstruction = 
+    'You are an academic examiner conducting a viva voce (oral exam). Based on the provided study materials, generate 6 challenging verbal examination questions along with their ideal conceptual answers and brief explanations. You must base your output strictly on the provided text. You must also return a citations list matching the viva questions to their document origins. Output must strictly match the JSON schema structure.'
+  
+  const prompt = `Generate 6 viva examination questions, ideal answers, explanations, and source citations based on the following study materials:\n\n${text}`
+  
+  const responseSchema = {
+    type: "object",
+    properties: {
+      questions: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            question: { type: "string" },
+            answer: { type: "string" },
+            explanation: { type: "string" }
+          },
+          required: ["question", "answer", "explanation"]
+        }
+      },
+      citations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            fileName: { type: "string" },
+            pageNumber: { type: "integer" },
+            contentSnippet: { type: "string" },
+            confidence: { type: "integer" }
+          },
+          required: ["fileName", "contentSnippet", "confidence"]
+        }
+      }
+    },
+    required: ["questions", "citations"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'notes_viva')
+  return JSON.parse(aiOutput)
+}
+
+export async function generateGroundedInterview(text: string) {
+  const systemInstruction = 
+    'You are a technical interviewer and career mentor. Based on the provided study materials, generate 6 job or internship interview preparation questions. The questions should include both technical concepts and behavioral scenarios. For each question, provide an ideal answer, specify the category (e.g., technical or behavioral), and indicate the difficulty level (e.g., easy, medium, or hard). You must base your output strictly on the provided text. You must also return a citations list matching the interview questions to their document origins. Output must strictly match the JSON schema structure.'
+  
+  const prompt = `Generate 6 interview preparation questions, ideal answers, categories, difficulties, and source citations based on the following study materials:\n\n${text}`
+  
+  const responseSchema = {
+    type: "object",
+    properties: {
+      questions: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            question: { type: "string" },
+            idealAnswer: { type: "string" },
+            category: { type: "string" },
+            difficulty: { type: "string" }
+          },
+          required: ["question", "idealAnswer", "category", "difficulty"]
+        }
+      },
+      citations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            fileName: { type: "string" },
+            pageNumber: { type: "integer" },
+            contentSnippet: { type: "string" },
+            confidence: { type: "integer" }
+          },
+          required: ["fileName", "contentSnippet", "confidence"]
+        }
+      }
+    },
+    required: ["questions", "citations"]
+  }
+
+  const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'notes_interview')
+  return JSON.parse(aiOutput)
+}
+
+export async function queryGroundedNoteChat(text: string, query: string, history: Array<{ role: string; content: string }>) {
+  const systemInstruction = 
+    'You are a smart note copilot RAG assistant. You answer questions strictly using the provided study sources as your primary context. If the answer cannot be found in the provided sources, state that the information is not in the study materials and refuse to answer (to keep grounded). Keep your answers brief, structured, and student-focused.'
   
   const historyText = history && Array.isArray(history)
     ? history.map(h => `${h.role === 'user' ? 'Student' : 'Copilot'}: ${h.content}`).join('\n')
@@ -264,10 +417,6 @@ export async function queryNoteChat(text: string, query: string, history: Array<
 
   let prompt = `Here are the student's study source notes:\n---START SOURCES---\n${text}\n---END SOURCES---\n\n`
   
-  if (brainContext) {
-    prompt += `Retrieved Academic Brain Context:\n---START BRAIN CONTEXT---\n${brainContext}\n---END BRAIN CONTEXT---\n\n`
-  }
-
   if (historyText) {
     prompt += `Conversation History:\n${historyText}\n\n`
   }
@@ -276,9 +425,22 @@ export async function queryNoteChat(text: string, query: string, history: Array<
   const responseSchema = {
     type: "object",
     properties: {
-      answer: { type: "string" }
+      answer: { type: "string" },
+      citations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            fileName: { type: "string" },
+            pageNumber: { type: "integer" },
+            contentSnippet: { type: "string" },
+            confidence: { type: "integer" }
+          },
+          required: ["fileName", "contentSnippet", "confidence"]
+        }
+      }
     },
-    required: ["answer"]
+    required: ["answer", "citations"]
   }
 
   const aiOutput = await callGemini(prompt, systemInstruction, responseSchema, 'notes_chat')
