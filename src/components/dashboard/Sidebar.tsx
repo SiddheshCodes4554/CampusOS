@@ -83,12 +83,11 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
       {/* Sidebar Header */}
       <div className="flex items-center justify-between px-2 py-3 mb-5 border-b border-[var(--border-glass)]/40">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          {/* Logo brand icon with high-fidelity glassmorphism layers */}
-          <div className="relative w-7 h-7 flex items-center justify-center shrink-0 select-none">
-            <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-[var(--accent-blue)] mix-blend-screen opacity-70 blur-[1px]" />
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[var(--accent-purple)] mix-blend-screen opacity-70 blur-[1px]" />
-            <div className="z-10 w-5 h-5 rounded-full bg-emerald-400 mix-blend-screen opacity-90 border border-white/20" />
-          </div>
+          <img
+            src="/CampusOSLogo.png"
+            alt="CampusOS Logo"
+            className="w-7 h-7 object-contain shrink-0 select-none"
+          />
           {!isSidebarCollapsed && (
             <motion.span
               initial={{ opacity: 0, x: -10 }}

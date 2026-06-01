@@ -15,6 +15,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "CampusOS - Student Command Center",
   description: "AI-powered operating system for college students.",
+  icons: {
+    icon: "/favicon-96x96.png",
+    shortcut: "/favicon-96x96.png",
+    apple: "/favicon-96x96.png",
+  }
 };
 
 export default function RootLayout({

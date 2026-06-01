@@ -104,11 +104,7 @@ export default function Home() {
       {/* Header navbar */}
       <header className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between border-b border-white/5 relative z-20 select-none">
         <div className="flex items-center gap-2.5">
-          <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
-            <span className="absolute -top-1 -left-1 w-4.5 h-4.5 rounded-full bg-[var(--accent-blue)] mix-blend-screen opacity-90 blur-[0.5px]" />
-            <span className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-[var(--accent-purple)] mix-blend-screen opacity-90 blur-[0.5px]" />
-            <div className="z-10 w-5.5 h-5.5 rounded-full bg-emerald-400 mix-blend-screen opacity-95 border border-white/10" />
-          </div>
+          <img src="/CampusOSLogo.png" alt="CampusOS Logo" className="w-8 h-8 object-contain shrink-0" />
           <span className="font-bold font-heading text-lg tracking-widest text-white">CAMPUS<span className="text-[var(--accent-blue)]">OS</span></span>
         </div>
         <Link

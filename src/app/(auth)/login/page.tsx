@@ -69,12 +69,7 @@ export default function LoginPage() {
 
       <div className="glass-card max-w-md w-full p-8 relative z-10 flex flex-col gap-6 border-white/5 shadow-2xl">
         <div className="text-center flex flex-col items-center gap-1.5">
-          {/* Logo brand icon matching reference styling */}
-          <div className="relative w-8 h-8 flex items-center justify-center shrink-0 mb-1">
-            <span className="absolute -top-1 -left-1 w-4.5 h-4.5 rounded-full bg-[var(--accent-blue)] mix-blend-screen opacity-90" />
-            <span className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-[var(--accent-purple)] mix-blend-screen opacity-90" />
-            <div className="z-10 w-5.5 h-5.5 rounded-full bg-emerald-400 mix-blend-screen opacity-95" />
-          </div>
+          <img src="/CampusOSLogo.png" alt="CampusOS Logo" className="w-8 h-8 object-contain mb-1 shrink-0 select-none" />
           <h1 className="text-2xl font-bold tracking-tight text-white select-none">
             CampusOS
           </h1>
