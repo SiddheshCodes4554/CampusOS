@@ -105,6 +105,8 @@ graph TD
     API -->|8. Structured JSON Response| Client
 ```
 
+![System Architecture & Data Flow](screenshots/system-architecture.png)
+
 ---
 
 ## 🗄️ Database Design (ER Model Summary)
