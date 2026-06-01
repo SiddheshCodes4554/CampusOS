@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
   Brain,
@@ -38,39 +39,65 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
   const pathname = usePathname()
   const { isSidebarCollapsed, setSidebarCollapsed } = useDashboardStore()
 
-  const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Academic Brain', href: '/brain', icon: Database },
-    { name: 'Memory Profile', href: '/memory', icon: Brain },
-    { name: 'Academic Chat', href: '/chat', icon: MessageSquare },
-    { name: 'Semester Copilot', href: '/semester', icon: Compass },
-    { name: 'Exam Prep', href: '/exam', icon: Flame },
-    { name: 'Study Planner', href: '/planner', icon: Calendar },
-    { name: 'Revision Mode', href: '/revision', icon: RefreshCw },
-    { name: 'Academic Analytics', href: '/analytics', icon: LineChart },
-    { name: 'Resume Analyzer', href: '/resume', icon: FileText },
-    { name: 'Project Builder', href: '/projects', icon: Cpu },
-    { name: 'Internship Tracker', href: '/internships', icon: Briefcase },
-    { name: 'Smart Notes', href: '/notes', icon: BookOpen },
-    { name: 'Placement Prep', href: '/placement', icon: GraduationCap },
-    { name: 'Settings', href: '/settings', icon: Settings },
+  // Grouped nav items for high-fidelity SaaS layout
+  const navSections = [
+    {
+      title: 'Core Telemetry',
+      items: [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Academic Brain', href: '/brain', icon: Database },
+        { name: 'Memory Profile', href: '/memory', icon: Brain },
+        { name: 'Academic Chat', href: '/chat', icon: MessageSquare },
+      ]
+    },
+    {
+      title: 'Academics',
+      items: [
+        { name: 'Semester Copilot', href: '/semester', icon: Compass },
+        { name: 'Exam Prep', href: '/exam', icon: Flame },
+        { name: 'Study Planner', href: '/planner', icon: Calendar },
+        { name: 'Revision Mode', href: '/revision', icon: RefreshCw },
+        { name: 'Analytics', href: '/analytics', icon: LineChart },
+        { name: 'Smart Notes', href: '/notes', icon: BookOpen },
+      ]
+    },
+    {
+      title: 'Career & Projects',
+      items: [
+        { name: 'Resume Analyzer', href: '/resume', icon: FileText },
+        { name: 'Project Builder', href: '/projects', icon: Cpu },
+        { name: 'Internship Tracker', href: '/internships', icon: Briefcase },
+        { name: 'Placement Prep', href: '/placement', icon: GraduationCap },
+      ]
+    },
+    {
+      title: 'System',
+      items: [
+        { name: 'Settings', href: '/settings', icon: Settings },
+      ]
+    }
   ]
 
   const sidebarContent = (
     <div className="flex flex-col h-full relative p-3">
       {/* Sidebar Header */}
-      <div className="flex items-center justify-between px-2 py-3 mb-6 border-b border-[var(--border-glass)]/50">
-        <div className="flex items-center gap-2.5">
-          {/* Logo brand icon matching reference styling */}
-          <div className="relative w-7 h-7 flex items-center justify-center shrink-0">
-            <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-[var(--accent-blue)] mix-blend-screen opacity-90" />
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[var(--accent-purple)] mix-blend-screen opacity-90" />
-            <div className="z-10 w-5 h-5 rounded-full bg-emerald-400 mix-blend-screen opacity-95" />
+      <div className="flex items-center justify-between px-2 py-3 mb-5 border-b border-[var(--border-glass)]/40">
+        <div className="flex items-center gap-2.5 overflow-hidden">
+          {/* Logo brand icon with high-fidelity glassmorphism layers */}
+          <div className="relative w-7 h-7 flex items-center justify-center shrink-0 select-none">
+            <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-[var(--accent-blue)] mix-blend-screen opacity-70 blur-[1px]" />
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[var(--accent-purple)] mix-blend-screen opacity-70 blur-[1px]" />
+            <div className="z-10 w-5 h-5 rounded-full bg-emerald-400 mix-blend-screen opacity-90 border border-white/20" />
           </div>
           {!isSidebarCollapsed && (
-            <span className="font-bold font-heading text-base tracking-wide text-[var(--text-primary)] select-none">
-              CampusOS
-            </span>
+            <motion.span
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="font-bold font-heading text-sm tracking-widest bg-gradient-to-r from-white via-slate-200 to-[var(--text-secondary)] bg-clip-text text-transparent select-none whitespace-nowrap"
+            >
+              CAMPUS<span className="text-[var(--accent-blue)]">OS</span>
+            </motion.span>
           )}
         </div>
 
@@ -78,9 +105,9 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
         <button
           onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
           aria-label={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          className="hidden md:flex p-1 hover:bg-white/5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+          className="hidden md:flex p-1 hover:bg-white/5 rounded-lg text-[var(--text-secondary)] hover:text-white cursor-pointer transition-colors border border-transparent hover:border-white/5 shadow-inner"
         >
-          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {isSidebarCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
         </button>
 
         {/* Mobile Close Trigger */}
@@ -88,57 +115,94 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
           <button
             onClick={onCloseMobile}
             aria-label="Close sidebar"
-            className="md:hidden p-1 hover:bg-white/5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="md:hidden p-1 hover:bg-white/5 rounded-lg text-[var(--text-secondary)] hover:text-white cursor-pointer transition-colors"
           >
             <X size={14} />
           </button>
         )}
       </div>
 
-      {/* Nav List */}
-      <nav className="flex-1 flex flex-col gap-1.5 px-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname.startsWith(item.href)
+      {/* Nav List with custom SaaS sections */}
+      <nav className="flex-1 flex flex-col gap-5 px-0.5 overflow-y-auto scrollbar-none pr-1">
+        {navSections.map((section, idx) => (
+          <div key={idx} className="flex flex-col gap-1">
+            {/* Section Title */}
+            {!isSidebarCollapsed && (
+              <span className="px-3 text-[8.5px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-1 select-none">
+                {section.title}
+              </span>
+            )}
+            
+            <div className="flex flex-col gap-1">
+              {section.items.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
 
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={onCloseMobile}
-              className={cn(
-                'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all select-none group',
-                isActive
-                  ? 'bg-[var(--accent-blue)] text-black shadow-[0_4px_12px_rgba(0,210,255,0.22)]'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/[0.03]'
-              )}
-            >
-              <Icon
-                size={16}
-                className={cn(
-                  'shrink-0 transition-transform group-hover:scale-105 duration-200',
-                  isActive ? 'text-black' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
-                )}
-              />
-              {!isSidebarCollapsed && <span>{item.name}</span>}
-            </Link>
-          )
-        })}
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={onCloseMobile}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all select-none group relative border',
+                      isActive
+                        ? 'bg-[var(--surface-bg)] text-[var(--accent-blue)] border-[var(--border-glass-active)] shadow-[0_0_15px_rgba(0,210,255,0.05)]'
+                        : 'text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.02] border-transparent'
+                    )}
+                  >
+                    {/* Active highlight side vertical line */}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeIndicator"
+                        className="absolute left-0 w-0.5 h-4 rounded-r bg-[var(--accent-blue)] shadow-[0_0_8px_var(--accent-blue)]"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+
+                    <Icon
+                      size={15}
+                      className={cn(
+                        'shrink-0 transition-all duration-300',
+                        isActive ? 'text-[var(--accent-blue)] scale-105' : 'text-[var(--text-secondary)] group-hover:text-white group-hover:scale-105'
+                      )}
+                    />
+                    
+                    {!isSidebarCollapsed && (
+                      <span className="truncate">{item.name}</span>
+                    )}
+
+                    {/* Collapsed Tooltip fallback */}
+                    {isSidebarCollapsed && (
+                      <div className="absolute left-14 opacity-0 group-hover:opacity-100 bg-[#0d0e12]/95 border border-[var(--border-glass-active)] text-[10px] px-2.5 py-1.5 rounded-lg text-white pointer-events-none select-none transition-all duration-200 z-50 whitespace-nowrap shadow-2xl translate-x-2 group-hover:translate-x-0">
+                        {item.name}
+                      </div>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer / Logout action */}
-      <div className="border-t border-[var(--border-glass)]/50 pt-3 mt-auto">
+      <div className="border-t border-[var(--border-glass)]/40 pt-3 mt-auto">
         <form action={signoutAction}>
           <button
             type="submit"
             aria-label="Logout"
             className={cn(
-              "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide text-red-400 hover:text-red-300 hover:bg-red-500/5 cursor-pointer transition-all select-none",
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/5 border border-transparent hover:border-rose-500/10 cursor-pointer transition-all select-none",
               isSidebarCollapsed ? "justify-center" : ""
             )}
           >
-            <LogOut size={16} className="shrink-0" />
+            <LogOut size={15} className="shrink-0" />
             {!isSidebarCollapsed && <span>Logout</span>}
+            {isSidebarCollapsed && (
+              <div className="absolute left-14 opacity-0 group-hover:opacity-100 bg-rose-950/95 border border-rose-500/20 text-[10px] px-2.5 py-1.5 rounded-lg text-rose-300 pointer-events-none select-none transition-all duration-200 z-50 whitespace-nowrap shadow-2xl translate-x-2 group-hover:translate-x-0">
+                Sign Out
+              </div>
+            )}
           </button>
         </form>
       </div>
@@ -148,24 +212,32 @@ export function Sidebar({ mobileOpen, onCloseMobile, className }: SidebarProps) 
   return (
     <>
       {/* Mobile Drawer Overlay */}
-      {mobileOpen && (
-        <div
-          onClick={onCloseMobile}
-          className="md:hidden fixed inset-0 z-45 bg-black/60 backdrop-blur-sm transition-opacity"
-        />
-      )}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onCloseMobile}
+            className="md:hidden fixed inset-0 z-45 bg-black/70 backdrop-blur-sm transition-opacity"
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Actual Sidebar Shell */}
-      <aside
+      {/* Actual Sidebar Shell with Framer Motion spring stiffness */}
+      <motion.aside
+        animate={{
+          width: isSidebarCollapsed ? 64 : 220,
+        }}
+        transition={{ type: 'spring', stiffness: 220, damping: 26 }}
         className={cn(
-          'fixed md:sticky top-0 left-0 z-50 h-screen transition-all duration-300 border-r border-[var(--border-glass)]/70 bg-[#0B0C10]/80 backdrop-blur-xl',
-          isSidebarCollapsed ? 'w-16' : 'w-56',
-          mobileOpen ? 'translate-x-0 w-56' : '-translate-x-full md:translate-x-0',
+          'fixed md:sticky top-0 left-0 z-50 h-screen border-r border-[var(--border-glass)]/60 bg-[rgba(11,12,16,0.85)] backdrop-blur-2xl flex-shrink-0',
+          mobileOpen ? 'translate-x-0 w-[220px]' : '-translate-x-full md:translate-x-0',
           className
         )}
       >
         {sidebarContent}
-      </aside>
+      </motion.aside>
     </>
   )
 }

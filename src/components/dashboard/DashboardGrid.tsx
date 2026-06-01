@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -13,7 +13,17 @@ import {
   Clock,
   Plus,
   Brain,
-  Activity
+  Activity,
+  Zap,
+  Battery,
+  Sliders,
+  TrendingUp,
+  Cpu,
+  Terminal,
+  ChevronRight,
+  Sparkles,
+  Calendar,
+  AlertTriangle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -100,19 +110,7 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
   const [notes, setNotes] = useState<Array<{ id: string; title: string; category: string; date: string }>>([])
 
   // To-Do list state
-  const [todos, setTodos] = useState<Array<{
-    id: string;
-    title: string;
-    time: string;
-    done: boolean;
-    color: string;
-    category: string;
-    originalType: 'study' | 'revision';
-    planId: string;
-    week?: number;
-    idx?: number;
-    itemId?: string;
-  }>>([])
+  const [todos, setTodos] = useState<TodoItem[]>([])
 
   // Load from local storage or database on mount
   useEffect(() => {
@@ -225,7 +223,7 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
                       title: taskTitle,
                       time: `Week ${milestone.week} • ${plan.subject}`,
                       done: isDone,
-                      color: '#F59E0B',
+                      color: '#00d2ff',
                       category: 'planner',
                       originalType: 'study',
                       planId: plan.id,
@@ -258,7 +256,7 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
                     title: item.task,
                     time: `Day ${item.dayNumber} • ${revPlan.subject_name} Revision`,
                     done: isDone,
-                    color: '#00D2FF',
+                    color: '#9d4edd',
                     category: 'revision',
                     originalType: 'revision',
                     planId: revPlan.id,
@@ -379,6 +377,38 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
     }
   }
 
+  // Simulator controls (reactive instant metrics adjustments)
+  const [simRetention, setSimRetention] = useState(72)
+  const [simStamina, setSimStamina] = useState(85)
+  const [simLatency, setSimLatency] = useState(140)
+  const [simDensity, setSimDensity] = useState(48)
+
+  useEffect(() => {
+    if (!twinStatus.offline) {
+      setSimRetention(twinStatus.telemetry.forgettingIndex)
+      setSimStamina(twinStatus.telemetry.focusBattery)
+      setSimLatency(twinStatus.telemetry.latencyMs)
+      setSimDensity(twinStatus.telemetry.density)
+    }
+  }, [twinStatus])
+
+  const triggerStudySession = () => {
+    setSimStamina(prev => Math.max(10, prev - 22))
+    setSimRetention(prev => Math.min(100, prev + 12))
+    setSimLatency(prev => Math.max(80, prev - 25))
+    setSimDensity(prev => Math.min(100, prev + 4))
+  }
+
+  const triggerRestCycle = () => {
+    setSimStamina(100)
+    setSimLatency(prev => Math.max(90, prev - 15))
+  }
+
+  const triggerTimeSkip = () => {
+    setSimRetention(prev => Math.max(20, prev - 15))
+    setSimLatency(prev => Math.min(350, prev + 50))
+  }
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -390,7 +420,7 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 15 },
-    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100 } }
+    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100, damping: 15 } }
   }
 
   return (
@@ -398,36 +428,37 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 xl:grid-cols-3 gap-6 select-none"
+      className="grid grid-cols-1 xl:grid-cols-3 gap-6 select-text pb-20"
     >
-      {/* LEFT & CENTER MAIN PANEL (lg:col-span-2) */}
+      {/* LEFT & CENTER MAIN PANEL (xl:col-span-2) */}
       <div className="xl:col-span-2 flex flex-col gap-6">
         
         {/* Welcome & Streak Banner */}
-        <div className="flex flex-col gap-1.5 sm:flex-row sm:justify-between sm:items-center">
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:justify-between sm:items-center border-b border-[var(--border-glass)]/20 pb-4 select-none">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] bg-clip-text text-transparent">
-              Welcome Back, {userName}
+            <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-[var(--text-secondary)] bg-clip-text text-transparent font-heading">
+              Mission Control
             </h1>
             <p className="text-[var(--text-secondary)] text-xs mt-1">
-              Your academic preparation hub. Here is your dashboard overview for today.
+              Active Session telemetry for candidate <span className="text-[var(--accent-blue)] font-bold">{userName}</span>
             </p>
           </div>
           {stats.streak > 0 && (
-            <div className="flex gap-2 mt-3 sm:mt-0">
-              <div className="glass-card px-3.5 py-1.5 flex items-center gap-2 border-[var(--border-glass)]">
-                <Flame className="text-amber-500 fill-amber-500 animate-pulse" size={14} />
-                <span className="text-[11px] font-bold text-[var(--text-primary)]">{stats.streak} Day Streak</span>
-              </div>
-            </div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="glass-card px-3.5 py-1.5 flex items-center gap-2 border-[var(--border-glass)] shadow-[0_0_12px_rgba(245,158,11,0.05)] bg-[rgba(245,158,11,0.03)]"
+            >
+              <Flame className="text-amber-500 fill-amber-500 animate-pulse" size={13} />
+              <span className="text-[10px] font-extrabold text-amber-400 tracking-wider font-mono">{stats.streak} DAY STREAK</span>
+            </motion.div>
           )}
         </div>
 
-        {/* 1. PROMIMEMT AI BANNER (Maths Reasoning Style) */}
+        {/* 1. PROMINENT AI BRAIN BANNER (Mathematical/Coding Theme) */}
         <motion.div variants={itemVariants}>
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#00A3FF] to-[#0066FF] p-6 text-white shadow-xl flex flex-col justify-between min-h-[160px] border border-white/10 group">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0c0f16] via-[#11131c] to-[#08090d] p-6 text-white shadow-2xl flex flex-col justify-between min-h-[170px] border border-[var(--border-glass-active)] group">
             {/* Mathematical / Coding equations background */}
-            <div className="absolute inset-0 opacity-15 font-mono text-[9px] pointer-events-none select-none overflow-hidden leading-tight p-4">
+            <div className="absolute inset-0 opacity-[0.07] font-mono text-[9px] pointer-events-none select-none overflow-hidden leading-relaxed p-4 select-none">
               {`∫ (sin(x) / cos(x)) dx = -ln|cos(x)| + C\n`}
               {`f(n) = f(n-1) + f(n-2) // Fibonacci Sequence\n`}
               {`for (let i = 0; i < n; i++) { dp[i] = Math.max(dp[i-1] + arr[i], arr[i]) }\n`}
@@ -436,103 +467,105 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
               {`O(log n) < O(n) < O(n log n) < O(n²)`}
             </div>
 
-            {/* Glowing ambient light */}
-            <span className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-cyan-400/20 blur-3xl group-hover:scale-110 transition-transform duration-700" />
+            {/* Glowing neon background orbs */}
+            <span className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[var(--accent-blue-glow)] blur-[80px] group-hover:scale-110 transition-transform duration-700 pointer-events-none" />
+            <span className="absolute -bottom-16 -left-16 w-36 h-36 rounded-full bg-[var(--accent-purple-glow)] blur-[60px] pointer-events-none" />
 
-            <div className="flex flex-col gap-1.5 relative z-10">
-              <span className="text-[9px] font-extrabold uppercase tracking-widest text-cyan-200">
-                HELLO ASPIRANTS !!!
+            <div className="flex flex-col gap-1.5 relative z-10 select-none">
+              <span className="text-[8.5px] font-extrabold uppercase tracking-widest text-[var(--accent-blue)] flex items-center gap-1.5">
+                <Terminal size={11} />
+                Cognitive Pipeline Status // ACTIVE
               </span>
-              <h2 className="text-2xl font-bold tracking-tight leading-none text-white font-heading">
-                AI Copilot & Smart Builder
+              <h2 className="text-xl font-extrabold tracking-tight text-white font-heading mt-1">
+                AI Academic Twin & Pipeline
               </h2>
-              <p className="text-xs text-white/80 max-w-sm mt-1 leading-relaxed">
-                Generate study plans, audit resume ATS compatibility, run mock interview coding sessions, and organize note guides in seconds.
+              <p className="text-xs text-[var(--text-secondary)] max-w-md mt-1 leading-relaxed">
+                vectorize your syllabi and coursework materials into high-dimension embeddings, map prerequisite nodes, and query notes dynamically.
               </p>
             </div>
 
-            <div className="mt-4 relative z-10 self-start">
+            <div className="mt-5 relative z-10 self-start">
               <Link
                 href="/projects"
-                className="inline-flex bg-black text-white hover:bg-black/80 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 items-center gap-1.5 cursor-pointer select-none"
+                className="inline-flex bg-white hover:bg-slate-100 text-black px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-[0_4px_12px_rgba(255,255,255,0.06)] active:scale-95 items-center gap-1.5 cursor-pointer select-none"
               >
-                <span>Start AI Builder</span>
+                <span>Initialize Project Builder</span>
                 <ArrowRight size={13} />
               </Link>
             </div>
           </div>
         </motion.div>
 
-        {/* 2. CONTINUE LEARNING SECTION (Progress Cards Block) */}
+        {/* 2. CONTINUE LEARNING (Progress Cards Grid) */}
         <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center px-1">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
-              Continue Learning
-            </h3>
-          </div>
+          <h3 className="px-1 text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] select-none">
+            Active Study Iterations
+          </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Card 1: Study Planner */}
+            {/* Study Planner Card */}
             <motion.div variants={itemVariants}>
               {stats.activePlanner ? (
-                <GlassCard className="p-4 flex flex-col justify-between min-h-[140px] hover:border-amber-400/30 transition-all border-white/5 bg-[#171821]/45">
+                <GlassCard className="p-5 flex flex-col justify-between min-h-[150px] border-[var(--border-glass)] hover:border-[rgba(0,210,255,0.25)] transition-all bg-[var(--surface-bg)] shadow-md">
                   <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start select-none">
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                        <h4 className="text-xs font-extrabold text-white truncate uppercase tracking-wider">
                           {stats.activePlanner}
                         </h4>
-                        <span className="text-[10px] text-[var(--text-muted)]">Study Planner Target</span>
+                        <span className="text-[9px] text-[var(--text-muted)] font-mono uppercase">COURSEWORK SCHEDULE</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] font-semibold text-amber-400 uppercase tracking-wider">
+                      <span className="px-2 py-0.5 rounded bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 text-[8px] font-extrabold text-[var(--accent-blue)] uppercase tracking-wider select-none">
                         Active Plan
                       </span>
                     </div>
 
                     {/* Custom Progress Bar */}
-                    <div className="flex flex-col gap-1.5 mt-2">
-                      <div className="flex justify-between text-[10px] font-semibold">
-                        <span className="text-[var(--text-secondary)]">Completion Progress</span>
-                        <span className="text-amber-400">{stats.plannerProgress}%</span>
+                    <div className="flex flex-col gap-1.5 mt-3 select-none">
+                      <div className="flex justify-between text-[9px] font-bold">
+                        <span className="text-[var(--text-secondary)]">Milestones Met</span>
+                        <span className="text-[var(--accent-blue)]">{stats.plannerProgress}%</span>
                       </div>
-                      <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                        <div
-                          className="h-full bg-amber-400 rounded-full transition-all duration-500"
-                          style={{ width: `${stats.plannerProgress}%` }}
+                      <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${stats.plannerProgress}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          className="h-full bg-[var(--accent-blue)] rounded-full shadow-[0_0_8px_var(--accent-blue)]"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5">
-                    <span className="text-[9px] text-[var(--text-muted)] font-medium flex items-center gap-1">
-                      <Clock size={11} /> Progress active
+                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-[var(--border-glass)]/50">
+                    <span className="text-[9px] text-[var(--text-muted)] font-mono flex items-center gap-1.5 select-none">
+                      <Clock size={11} /> TRACE_OK
                     </span>
                     <Link
                       href="/planner"
-                      className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-[var(--text-primary)] transition-all cursor-pointer select-none"
+                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-extrabold text-white transition-all cursor-pointer select-none border border-white/5"
                     >
                       Continue
                     </Link>
                   </div>
                 </GlassCard>
               ) : (
-                <GlassCard className="p-4 flex flex-col justify-between min-h-[140px] hover:border-amber-400/30 transition-all border-white/5 bg-[#171821]/45">
-                  <div className="flex flex-col gap-2">
+                <GlassCard className="p-5 flex flex-col justify-between min-h-[150px] border-[var(--border-glass)] hover:border-[rgba(0,210,255,0.25)] transition-all bg-[var(--surface-bg)]">
+                  <div className="flex flex-col gap-2 select-none">
                     <div className="flex justify-between items-start">
-                      <h4 className="text-sm font-bold text-[var(--text-primary)]">No Active Study Plan</h4>
-                      <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] font-semibold text-amber-400 uppercase tracking-wider">
-                        Inactive
+                      <h4 className="text-xs font-extrabold text-white uppercase tracking-wider">No Active Study Plan</h4>
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-extrabold text-[var(--text-secondary)] uppercase tracking-wider">
+                        STANDBY
                       </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
-                      Map your coursework milestones and exam dates. Let AI build a custom daily revision tracker.
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                      Map course parameters and exam calendars to generate weekly milestones automatically.
                     </p>
                   </div>
-                  <div className="flex justify-end mt-3">
+                  <div className="flex justify-end mt-4">
                     <Link
                       href="/planner"
-                      className="px-3.5 py-1.5 bg-amber-500 text-black hover:bg-amber-400 rounded-lg text-[10px] font-bold transition-all cursor-pointer select-none"
+                      className="px-4 py-1.5 bg-[var(--accent-blue)] text-black hover:opacity-90 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer select-none shadow-[0_4px_12px_rgba(0,210,255,0.15)]"
                     >
                       Create Plan
                     </Link>
@@ -541,67 +574,69 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
               )}
             </motion.div>
 
-            {/* Card 2: AI Project Builder */}
+            {/* AI Project Builder Card */}
             <motion.div variants={itemVariants}>
               {stats.activeProject ? (
-                <GlassCard className="p-4 flex flex-col justify-between min-h-[140px] hover:border-emerald-400/30 transition-all border-white/5 bg-[#171821]/45">
+                <GlassCard className="p-5 flex flex-col justify-between min-h-[150px] border-[var(--border-glass)] hover:border-[rgba(157,78,221,0.25)] transition-all bg-[var(--surface-bg)] shadow-md">
                   <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start select-none">
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                        <h4 className="text-xs font-extrabold text-white truncate uppercase tracking-wider">
                           {stats.activeProject}
                         </h4>
-                        <span className="text-[10px] text-[var(--text-muted)]">Portfolio Project</span>
+                        <span className="text-[9px] text-[var(--text-muted)] font-mono uppercase">PORTFOLIO PIPELINE</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-semibold text-emerald-400 uppercase tracking-wider">
-                        Building
+                      <span className="px-2 py-0.5 rounded bg-[var(--accent-purple-glow)] border border-[var(--accent-purple)]/20 text-[8px] font-extrabold text-[var(--accent-purple)] uppercase tracking-wider select-none">
+                        Compiling
                       </span>
                     </div>
 
                     {/* Custom Progress Bar */}
-                    <div className="flex flex-col gap-1.5 mt-2">
-                      <div className="flex justify-between text-[10px] font-semibold">
-                        <span className="text-[var(--text-secondary)]">Tasks Completed</span>
-                        <span className="text-emerald-400">{stats.projectProgress}%</span>
+                    <div className="flex flex-col gap-1.5 mt-3 select-none">
+                      <div className="flex justify-between text-[9px] font-bold">
+                        <span className="text-[var(--text-secondary)]">PRD Roadmap Completion</span>
+                        <span className="text-[var(--accent-purple)]">{stats.projectProgress}%</span>
                       </div>
-                      <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                        <div
-                          className="h-full bg-emerald-400 rounded-full transition-all duration-500"
-                          style={{ width: `${stats.projectProgress}%` }}
+                      <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${stats.projectProgress}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          className="h-full bg-[var(--accent-purple)] rounded-full shadow-[0_0_8px_var(--accent-purple)]"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5">
-                    <span className="text-[9px] text-[var(--text-muted)] font-medium">
-                      Project tracker active
+                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-[var(--border-glass)]/50">
+                    <span className="text-[9px] text-[var(--text-muted)] font-mono flex items-center gap-1.5 select-none">
+                      <Cpu size={11} /> BUILD_OK
                     </span>
                     <Link
                       href="/projects"
-                      className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-[var(--text-primary)] transition-all cursor-pointer select-none"
+                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-extrabold text-white transition-all cursor-pointer select-none border border-white/5"
                     >
-                      Continue
+                      Open Builder
                     </Link>
                   </div>
                 </GlassCard>
               ) : (
-                <GlassCard className="p-4 flex flex-col justify-between min-h-[140px] hover:border-emerald-400/30 transition-all border-white/5 bg-[#171821]/45">
-                  <div className="flex flex-col gap-2">
+                <GlassCard className="p-5 flex flex-col justify-between min-h-[150px] border-[var(--border-glass)] hover:border-[rgba(157,78,221,0.25)] transition-all bg-[var(--surface-bg)]">
+                  <div className="flex flex-col gap-2 select-none">
                     <div className="flex justify-between items-start">
-                      <h4 className="text-sm font-bold text-[var(--text-primary)]">No Portfolio Projects</h4>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-semibold text-emerald-400 uppercase tracking-wider">
-                        Inactive
+                      <h4 className="text-xs font-extrabold text-white uppercase tracking-wider">No Active Project</h4>
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-extrabold text-[var(--text-secondary)] uppercase tracking-wider">
+                        STANDBY
                       </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
-                      Structure real-world coding portfolios and outlines. Generate custom project roadmaps now.
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                      Generate folder directory hierarchies and professional PRD details tailored for engineering recruitment.
                     </p>
                   </div>
-                  <div className="flex justify-end mt-3">
+                  <div className="flex justify-end mt-4">
                     <Link
                       href="/projects"
-                      className="px-3.5 py-1.5 bg-emerald-500 text-black hover:bg-emerald-400 rounded-lg text-[10px] font-bold transition-all cursor-pointer select-none"
+                      className="px-4 py-1.5 bg-[var(--accent-purple)] text-black hover:opacity-90 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer select-none shadow-[0_4px_12px_rgba(157,78,221,0.15)]"
                     >
                       Build Portfolio
                     </Link>
@@ -612,37 +647,35 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
           </div>
         </div>
 
-        {/* 3. CONTINUE READING SECTION (Note cards with progress dials) */}
+        {/* 3. CONTINUE READING (Grounded Document Archives) */}
         <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center px-1">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
-              Continue Reading
-            </h3>
-          </div>
+          <h3 className="px-1 text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] select-none">
+            Recent Ingested Archives
+          </h3>
           
           {notes.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {notes.map((note) => (
                 <motion.div key={note.id} variants={itemVariants}>
-                  <GlassCard className="p-4 flex flex-col justify-between min-h-[120px] border-white/5 bg-[#12131A]/60 hover:bg-[#12131A]/80 transition-colors">
+                  <GlassCard className="p-4 flex flex-col justify-between min-h-[125px] border-[var(--border-glass)] bg-[var(--surface-bg)] hover:bg-white/[0.01] transition-all">
                     <div className="flex flex-col gap-1 min-w-0">
-                      <h4 className="text-xs font-bold text-[var(--text-primary)] truncate" title={note.title}>
+                      <h4 className="text-xs font-bold text-white truncate" title={note.title}>
                         {note.title}
                       </h4>
-                      <span className="text-[9px] text-[var(--text-muted)]">
+                      <span className="text-[8.5px] text-[var(--text-muted)] font-mono uppercase tracking-wider">
                         {note.category}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
-                      <span className="text-[9px] text-[var(--text-muted)] font-medium">
-                        Uploaded {note.date}
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--border-glass)]/30">
+                      <span className="text-[8.5px] text-[var(--text-muted)] font-mono select-none">
+                        {note.date}
                       </span>
                       <Link
                         href="/notes"
-                        className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[var(--text-primary)] transition-all cursor-pointer select-none"
+                        className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[var(--accent-blue)] border border-white/5 hover:scale-105 active:scale-95 transition-all cursor-pointer select-none"
                       >
-                        <ArrowRight size={12} />
+                        <ChevronRight size={14} />
                       </Link>
                     </div>
                   </GlassCard>
@@ -650,15 +683,15 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
               ))}
             </div>
           ) : (
-            <GlassCard className="p-5 border border-dashed border-white/15 bg-black/10 flex flex-col items-center justify-center text-center py-8 rounded-2xl">
-              <Brain className="text-[var(--text-muted)] opacity-30 mb-2" size={24} />
-              <h4 className="text-xs font-bold text-[var(--text-primary)] mb-1">Your Library is Empty</h4>
-              <p className="text-[10px] text-[var(--text-muted)] max-w-sm leading-relaxed mb-3">
-                Upload notes or syllabus files in the Brain view to populate your notes library.
+            <GlassCard className="p-5 border border-dashed border-[var(--border-glass-active)] bg-black/10 flex flex-col items-center justify-center text-center py-9 rounded-2xl select-none">
+              <Brain className="text-[var(--text-muted)] opacity-25 mb-2" size={24} />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Your Library is Empty</h4>
+              <p className="text-[10px] text-[var(--text-secondary)] max-w-sm leading-relaxed mb-4">
+                Upload notes or syllabus files in the Academic Brain page to construct dynamic study materials.
               </p>
               <Link
                 href="/brain"
-                className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer select-none"
+                className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer select-none"
               >
                 Upload Course Notes
               </Link>
@@ -666,32 +699,33 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
           )}
         </div>
 
-        {/* 4. COUNSELING SCHEDULE / PLACEMENT STRIP (Wide Strip at Bottom) */}
+        {/* 4. RECRUITMENT BOT ADVERTISEMENT STRIP */}
         <motion.div variants={itemVariants}>
-          <div className="glass-card p-3.5 border-white/5 bg-[#12131A]/60 hover:bg-[#12131A]/80 transition-colors flex flex-col sm:flex-row justify-between items-center gap-3.5 rounded-2xl w-full">
+          <div className="glass-card p-4 border-[var(--border-glass)] bg-[var(--surface-bg)] flex flex-col sm:flex-row justify-between items-center gap-4 rounded-2xl w-full">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-black font-extrabold text-xs">
-                AI
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-black font-extrabold text-[10px] shadow-[0_0_12px_rgba(0,210,255,0.15)] relative">
+                <Sparkles size={14} />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
               </div>
-              <div className="flex flex-col text-center sm:text-left">
-                <span className="text-xs font-bold text-[var(--text-primary)]">
-                  Stripe Recruiting Bot (Virtual Interviewer)
+              <div className="flex flex-col text-center sm:text-left select-none">
+                <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5 justify-center sm:justify-start">
+                  AI Placement Simulator
                 </span>
-                <span className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                  AI Recruiter Simulator • Behavioral & Technical Coding Assessment
+                <span className="text-[9.5px] text-[var(--text-secondary)] mt-0.5">
+                  Simulate technical DSA compiler evaluations or behavioral HR recruiters.
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-[9px] font-bold text-cyan-400 uppercase tracking-widest">
-                Interactive Practice
+            <div className="flex items-center gap-3 select-none">
+              <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold text-emerald-400 uppercase tracking-widest">
+                SIM_ONLINE
               </span>
               <Link
                 href="/placement"
-                className="px-3 py-1.5 bg-[var(--accent-blue)] text-black hover:bg-[var(--accent-blue)]/90 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer select-none"
+                className="px-4 py-2 bg-[var(--accent-blue)] text-black hover:opacity-90 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer select-none shadow-[0_4px_12px_rgba(0,210,255,0.15)]"
               >
-                Start Session
+                Start Simulator
               </Link>
             </div>
           </div>
@@ -699,146 +733,179 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
 
       </div>
 
-      {/* RIGHT SIDEBAR PANEL (Weekly Activities & To-Do List) */}
+      {/* RIGHT SIDEBAR PANEL: THE DIGITAL TWIN HUD (col-span-1) */}
       <div className="xl:col-span-1 flex flex-col gap-6">
 
-        {/* AI DIGITAL TWIN TELEMETRY WIDGET */}
+        {/* LIVING DIGITAL TWIN HOLOGRAM WIDGET */}
         <motion.div variants={itemVariants}>
           {twinStatus.offline ? (
-            <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[#12131A]/60 relative overflow-hidden group">
-              <span className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-rose-500/5 blur-xl group-hover:scale-125 transition-all" />
-              
-              <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
-                <h3 className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-primary)] flex items-center gap-1.5">
+            <GlassCard className="p-5 flex flex-col gap-4 border-[var(--border-glass)] bg-[var(--surface-bg)] relative overflow-hidden group select-none">
+              <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2.5">
+                <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-white flex items-center gap-1.5">
                   <Brain size={14} className="text-rose-400" />
-                  AI Student Twin
+                  Academic Digital Twin
                 </h3>
-                <span className="text-[7.5px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded font-mono font-bold">
+                <span className="text-[8px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-mono font-bold tracking-wider">
                   OFFLINE
                 </span>
               </div>
 
-              <div className="flex flex-col items-center justify-center text-center py-4 select-none">
-                <Activity size={20} className="text-rose-500/30 mb-2 animate-pulse" />
-                <h4 className="text-xs font-bold text-[var(--text-primary)] mb-1">Academic Twin Offline</h4>
-                <p className="text-[10px] text-[var(--text-muted)] max-w-[200px] leading-relaxed">
-                  Ingest notes, run a revision planner, or complete mock prep quizzes to initialize cognitive telemetry.
+              <div className="flex flex-col items-center justify-center text-center py-6">
+                <Activity size={24} className="text-rose-500/20 mb-2 animate-pulse" />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Twin Standby</h4>
+                <p className="text-[10px] text-[var(--text-secondary)] max-w-[200px] leading-relaxed mb-4">
+                  Ingest notes, configure planners, or score DSA checkpoints to compile twin telemetry.
                 </p>
               </div>
 
               <Link
                 href="/brain"
-                className="w-full h-8 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none"
+                className="w-full h-9 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold text-white transition-all flex items-center justify-center gap-1.5 border border-white/5 cursor-pointer"
               >
                 <span>Upload Materials</span>
-                <ArrowRight size={10} />
+                <ArrowRight size={12} />
               </Link>
             </GlassCard>
           ) : (
-            <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[#12131A]/60 relative overflow-hidden group">
-              <span className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-cyan-500/10 blur-xl group-hover:scale-125 transition-all" />
-              
-              <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
-                <h3 className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-primary)] flex items-center gap-1.5">
-                  <Brain size={14} className="text-cyan-400 animate-pulse" />
-                  AI Student Twin
+            <GlassCard className="p-5 flex flex-col gap-4 border-[var(--border-glass)] bg-[var(--surface-bg)] relative overflow-hidden group">
+              <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2.5 select-none">
+                <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-white flex items-center gap-1.5">
+                  <Brain size={14} className="text-[var(--accent-blue)] animate-pulse" />
+                  Academic Digital Twin
                 </h3>
-                <span className="text-[7.5px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-1.5 py-0.5 rounded font-mono font-bold">
+                <span className="text-[8px] bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] border border-[var(--accent-blue)]/20 px-2 py-0.5 rounded font-mono font-bold tracking-wider animate-pulse">
                   TELEMETRY
                 </span>
               </div>
 
-              <div className="flex items-center gap-4 py-1.5 select-none">
-                <div className="relative w-12 h-12 shrink-0 flex items-center justify-center rounded-full bg-cyan-500/5 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-                  <Activity size={16} className="text-cyan-400 animate-pulse" />
-                  <span className="absolute inset-0 rounded-full border border-dashed border-cyan-500/30 animate-spin duration-10000" />
+              {/* LIVING HOLOGRAM CORE ORB */}
+              <div className="flex items-center gap-5 py-2 select-none">
+                <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
+                  {/* Rotating breathing outer gradient orbits */}
+                  <span className="absolute inset-0 rounded-full border border-[var(--accent-blue)]/25 animate-ping opacity-25" />
+                  <span className="absolute inset-1 rounded-full border border-dashed border-[var(--accent-purple)]/40 animate-spin duration-7000" />
+                  
+                  {/* Floating core sphere */}
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center shadow-[0_0_20px_var(--accent-blue-glow)] border border-white/10 relative">
+                    <Activity size={14} className="text-white animate-pulse" />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 flex-1 text-center">
+                {/* Micro HUD Telemetry Readout */}
+                <div className="grid grid-cols-3 gap-2 flex-1 text-center font-mono select-none">
                   <div className="flex flex-col">
-                    <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">RETENTION</span>
-                    <span className="text-xs font-bold text-white mt-0.5">{twinStatus.telemetry.forgettingIndex}%</span>
+                    <span className="text-[7px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">RETENTION</span>
+                    <span className="text-xs font-bold text-white mt-1">{simRetention}%</span>
                   </div>
-                  <div className="flex flex-col border-l border-white/5">
-                    <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">BATTERY</span>
-                    <span className="text-xs font-bold text-white mt-0.5">{twinStatus.telemetry.focusBattery}%</span>
+                  <div className="flex flex-col border-l border-[var(--border-glass)]">
+                    <span className="text-[7px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">BATTERY</span>
+                    <span className="text-xs font-bold text-white mt-1">{simStamina}%</span>
                   </div>
-                  <div className="flex flex-col border-l border-white/5">
-                    <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">RECALL</span>
-                    <span className="text-xs font-bold text-white mt-0.5">{twinStatus.telemetry.latencyMs}ms</span>
+                  <div className="flex flex-col border-l border-[var(--border-glass)]">
+                    <span className="text-[7px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">RECALL</span>
+                    <span className="text-xs font-bold text-white mt-1">{simLatency}ms</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-black/25 border border-white/5 rounded-xl p-3 text-[10px] text-[var(--text-secondary)] leading-relaxed italic relative">
+              {/* Interactive Twin Cognitive Monologue */}
+              <div className="bg-black/40 border border-[var(--border-glass)] rounded-xl p-3 text-[10px] text-[var(--text-secondary)] leading-relaxed italic relative font-medium select-text">
                 &ldquo;{twinStatus.monologue.length > 130 ? twinStatus.monologue.slice(0, 130) + '...' : twinStatus.monologue}&rdquo;
+              </div>
+
+              {/* Cognitive Sandbox Controls */}
+              <div className="bg-black/15 p-3 rounded-xl border border-[var(--border-glass)] space-y-2 select-none">
+                <span className="text-[7.5px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-1">
+                  <Sliders size={9} /> Cognitive Sandbox Controls
+                </span>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={triggerStudySession}
+                    disabled={simStamina <= 15}
+                    className="py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/15 disabled:bg-white/5 border border-emerald-500/15 disabled:border-transparent text-emerald-400 disabled:text-white/20 text-[8px] font-extrabold transition-colors cursor-pointer"
+                  >
+                    Study Loop
+                  </button>
+                  <button
+                    onClick={triggerRestCycle}
+                    className="py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/15 text-indigo-400 text-[8px] font-extrabold transition-colors cursor-pointer"
+                  >
+                    Sleep/Rest
+                  </button>
+                  <button
+                    onClick={triggerTimeSkip}
+                    className="py-1 rounded bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/15 text-rose-400 text-[8px] font-extrabold transition-colors cursor-pointer"
+                  >
+                    24h Decay
+                  </button>
+                </div>
               </div>
 
               <Link
                 href="/memory"
-                className="w-full h-8 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none"
+                className="w-full h-8.5 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold text-white transition-all flex items-center justify-center gap-1 border border-white/5 cursor-pointer"
               >
                 <span>Access Cognitive Core</span>
-                <ArrowRight size={10} />
+                <ArrowRight size={11} />
               </Link>
             </GlassCard>
           )}
         </motion.div>
         
-        {/* A. WEEKLY ACTIVITIES: Donut Chart & Legend */}
+        {/* A. WEEKLY GOALS & PROGRESS INDICATOR */}
         <motion.div variants={itemVariants}>
-          <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
-            <div className="border-b border-[var(--border-glass)] pb-2 select-none">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                Weekly Activities
+          <GlassCard className="p-5 flex flex-col gap-4 border-[var(--border-glass)] bg-[var(--surface-bg)] select-none">
+            <div className="border-b border-[var(--border-glass)] pb-2.5">
+              <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-white">
+                Daily Study Progress
               </h3>
             </div>
 
             {stats.studyHoursAchieved > 0 ? (
-              <div className="flex flex-col items-center justify-center py-4">
-                <div className="relative w-36 h-36 shrink-0">
+              <div className="flex flex-col items-center justify-center py-2">
+                <div className="relative w-32 h-32 shrink-0">
                   <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="72" cy="72" r="56" className="stroke-white/5 fill-transparent" strokeWidth="12" />
+                    <circle cx="64" cy="64" r="50" className="stroke-white/5 fill-transparent" strokeWidth="8" />
                     <circle
-                      cx="72"
-                      cy="72"
-                      r="56"
+                      cx="64"
+                      cy="64"
+                      r="50"
                       className="fill-transparent stroke-[var(--accent-blue)]"
-                      strokeWidth="12"
-                      strokeDasharray={2 * Math.PI * 56}
-                      strokeDashoffset={(2 * Math.PI * 56) * (1 - Math.min(1.0, stats.studyHoursAchieved / stats.studyHoursTarget))}
+                      strokeWidth="8"
+                      strokeDasharray={2 * Math.PI * 50}
+                      strokeDashoffset={(2 * Math.PI * 50) * (1 - Math.min(1.0, stats.studyHoursAchieved / stats.studyHoursTarget))}
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-2xl font-bold text-[var(--text-primary)] leading-none">
-                      {stats.studyHoursAchieved}
+                    <span className="text-xl font-extrabold text-white leading-none font-mono">
+                      {stats.studyHoursAchieved}h
                     </span>
-                    <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest mt-1">HOURS TODAY</span>
+                    <span className="text-[7.5px] text-[var(--text-muted)] uppercase tracking-widest mt-1">LOGGED TODAY</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-6 text-[10px] font-semibold text-[var(--text-secondary)] select-none mt-4">
+                <div className="flex items-center justify-center gap-5 text-[9px] font-bold text-[var(--text-secondary)] mt-4">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded bg-white/20" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
                     <span>Target ({stats.studyHoursTarget}h)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded bg-[var(--accent-blue)]" />
-                    <span>Logged ({stats.studyHoursAchieved}h)</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-blue)]" />
+                    <span>Completed</span>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center text-center py-6 select-none">
-                <Clock className="text-cyan-500/30 mb-2 animate-pulse" size={24} />
-                <h4 className="text-xs font-bold text-[var(--text-primary)] mb-1">No Study Hours Today</h4>
-                <p className="text-[10px] text-[var(--text-muted)] max-w-[200px] leading-relaxed mb-3">
-                  Log a study session with the stopwatch on the Analytics tab to visualize your goals.
+              <div className="flex flex-col items-center justify-center text-center py-5">
+                <Clock className="text-[var(--accent-blue)]/20 mb-2 animate-pulse" size={24} />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Target Pending</h4>
+                <p className="text-[10px] text-[var(--text-secondary)] max-w-[190px] leading-relaxed mb-3">
+                  Log active study sessions in the Analytics tab to compile targets.
                 </p>
                 <Link
                   href="/analytics"
-                  className="px-3 py-1 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-lg text-[9px] font-bold transition-all cursor-pointer select-none"
+                  className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 text-white rounded-lg text-[9px] font-bold transition-all cursor-pointer"
                 >
                   Log Study Session
                 </Link>
@@ -847,57 +914,57 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
           </GlassCard>
         </motion.div>
 
-        {/* B. YOUR TO-DO LIST */}
+        {/* B. SAAS CONFIG CHECKLIST (YOUR TO-DO LIST) */}
         <motion.div variants={itemVariants}>
-          <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[#12131A]/60">
-            <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                Your To-Do List
+          <GlassCard className="p-5 flex flex-col gap-4 border-[var(--border-glass)] bg-[var(--surface-bg)]">
+            <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2.5 select-none">
+              <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-white">
+                Task Checklist Queue
               </h3>
               {todos.length > 0 && (
-                <span className="text-[10px] text-[var(--accent-blue)] font-bold">
-                  {todos.filter(t => !t.done).length} Pending
+                <span className="text-[9px] text-[var(--accent-blue)] font-bold font-mono">
+                  {todos.filter(t => !t.done).length} PENDING
                 </span>
               )}
             </div>
 
             {todos.length > 0 ? (
-              <div className="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+              <div className="flex flex-col gap-2.5 max-h-[380px] overflow-y-auto pr-0.5 custom-scrollbar">
                 {todos.map((todo) => (
                   <div
                     key={todo.id}
                     onClick={() => toggleTodo(todo)}
                     className={cn(
-                      "flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.02] border transition-colors cursor-pointer select-none",
-                      todo.done ? "border-transparent opacity-45" : "border-white/5"
+                      "flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.01] border transition-all cursor-pointer select-none",
+                      todo.done ? "border-transparent opacity-40" : "border-[var(--border-glass)] bg-black/10"
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0 pr-1">
                       <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
                         style={{ backgroundColor: `${todo.color}15`, border: `1px solid ${todo.color}25` }}
                       >
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: todo.color }} />
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: todo.color }} />
                       </div>
 
                       <div className="flex flex-col min-w-0">
                         <span className={cn(
-                          "text-xs font-bold text-[var(--text-primary)] truncate",
+                          "text-xs font-bold text-white truncate",
                           todo.done && "line-through text-[var(--text-muted)]"
                         )}>
                           {todo.title}
                         </span>
-                        <span className="text-[9px] text-[var(--text-muted)] mt-0.5">
+                        <span className="text-[8px] text-[var(--text-muted)] mt-0.5 font-mono">
                           {todo.time}
                         </span>
                       </div>
                     </div>
 
-                    <button className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1 cursor-pointer shrink-0">
+                    <button className="text-[var(--text-secondary)] hover:text-white transition-colors p-1 cursor-pointer shrink-0">
                       {todo.done ? (
-                        <CheckCircle2 size={15} className="text-emerald-400" />
+                        <CheckCircle2 size={14} className="text-emerald-400" />
                       ) : (
-                        <Circle size={15} className="text-white/20 hover:text-white/40" />
+                        <Circle size={14} className="text-white/25 hover:text-white/40" />
                       )}
                     </button>
                   </div>
@@ -905,17 +972,17 @@ export function DashboardGrid({ userName = 'Student' }: DashboardGridProps) {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center text-center py-6 select-none">
-                <CheckCircle2 className="text-emerald-500/20 mb-2" size={24} />
-                <h4 className="text-xs font-bold text-[var(--text-primary)] mb-1">All Caught Up!</h4>
-                <p className="text-[10px] text-[var(--text-muted)] max-w-[180px] leading-relaxed">
-                  No active revision or study plan tasks found. Generate one in the Planner or Revision tabs to populate your daily schedule.
+                <CheckCircle2 className="text-emerald-400/20 mb-2 animate-pulse" size={24} />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Queue Completed</h4>
+                <p className="text-[10px] text-[var(--text-secondary)] max-w-[190px] leading-relaxed">
+                  No active planner tasks. Generate custom pipelines in the Planner or Revision tabs.
                 </p>
               </div>
             )}
 
             <Link
               href="/planner"
-              className="w-full flex items-center justify-center gap-1.5 py-2 mt-2 border border-dashed border-white/5 hover:border-[var(--accent-blue)] rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer select-none"
+              className="w-full flex items-center justify-center gap-1.5 py-2 mt-2 border border-dashed border-[var(--border-glass-active)] hover:border-[var(--accent-blue)] rounded-xl text-xs text-[var(--text-secondary)] hover:text-white transition-all cursor-pointer select-none"
             >
               <Plus size={14} />
               <span>Go to Study Planner</span>

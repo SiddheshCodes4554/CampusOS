@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Compass, 
   Upload, 
@@ -14,11 +15,19 @@ import {
   Award,
   ChevronRight,
   RefreshCw,
-  Percent
+  Percent,
+  CheckCircle2,
+  Bookmark,
+  Layers,
+  ArrowRight,
+  Play,
+  Activity,
+  FileText
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface SemesterPlan {
   id: string
@@ -220,21 +229,21 @@ export default function SemesterCopilotPage() {
   const stats = getSubjectStats()
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 md:p-6 pb-20">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-20 select-text">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border-glass)]/25 pb-4 select-none">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-purple-500 flex items-center justify-center text-black font-semibold shadow-[0_0_15px_rgba(0,210,255,0.3)]">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center text-black font-semibold shadow-[0_0_15px_rgba(6,182,212,0.25)]">
               <Compass size={18} />
             </div>
-            <h1 className="text-2xl font-bold font-heading tracking-tight text-[var(--text-primary)]">
-              AI Semester Copilot
+            <h1 className="text-2xl font-extrabold tracking-tight text-white font-heading">
+              Semester Copilot
             </h1>
           </div>
           <p className="text-xs text-[var(--text-secondary)]">
-            Upload your syllabus to automatically map units, grades, schedules, practical works, and generate targeted internal/final exam preparators.
+            Ingest your syllabus structure to align unit weights, maps, Gantt roadmap tasks, and mock exam schedules.
           </p>
         </div>
 
@@ -246,7 +255,7 @@ export default function SemesterCopilotPage() {
               const matched = plans.find(p => p.id === e.target.value)
               if (matched) setSelectedPlan(matched)
             }}
-            className="bg-[#16171E] border border-[var(--border-glass)]/70 rounded-xl px-3.5 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-cyan-500 transition-colors"
+            className="bg-[#16171E] border border-[var(--border-glass)] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition-colors"
           >
             {plans.map(p => (
               <option key={p.id} value={p.id}>
@@ -258,29 +267,29 @@ export default function SemesterCopilotPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-2">
+        <div className="flex flex-col items-center justify-center py-20 gap-2 select-none">
           <Loader2 size={32} className="animate-spin text-cyan-400" />
-          <span className="text-xs text-[var(--text-secondary)]">Loading semester copilot context...</span>
+          <span className="text-xs text-[var(--text-secondary)] font-semibold">Tethering Syllabus Modules...</span>
         </div>
       ) : !selectedPlan ? (
         
         /* Syllabus Uploader (When no active plans exist) */
-        <GlassCard className="p-8 max-w-xl mx-auto border-[var(--border-glass)]/70 mt-10">
+        <GlassCard className="p-8 max-w-xl mx-auto border-[var(--border-glass)] mt-10 select-none">
           <div className="text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500/10 to-indigo-500/10 text-[var(--accent-blue)] border border-cyan-500/20 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(6,182,212,0.1)]">
               <Upload size={24} />
             </div>
             <div className="space-y-1">
-              <h2 className="text-base font-bold font-heading text-[var(--text-primary)]">
-                Initialize Semester Copilot
+              <h2 className="text-base font-extrabold text-white uppercase tracking-wider font-heading">
+                Initialize Course Schedule
               </h2>
-              <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
-                Drag and drop your university course syllabus (PDF, DOCX, PPTX, or TXT) to generate full roadmaps, grading graphs, and revision structures.
+              <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
+                Upload your university course syllabus (PDF, DOCX, or TXT) to generate full roadmaps, grading distributions, and revision structures.
               </p>
             </div>
 
             <form onSubmit={handleUploadSubmit} className="space-y-4 pt-4">
-              <div className="border border-dashed border-[var(--border-glass)]/50 rounded-2xl p-6 bg-black/20 hover:border-cyan-500/40 transition-colors cursor-pointer relative group">
+              <div className="border border-dashed border-[var(--border-glass)] hover:border-cyan-500/40 rounded-2xl p-7 bg-black/20 transition-all cursor-pointer relative group">
                 <input
                   type="file"
                   id="syllabus-file-input"
@@ -288,9 +297,9 @@ export default function SemesterCopilotPage() {
                   accept=".pdf,.txt,.docx,.pptx"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <div className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
+                <div className="text-xs text-[var(--text-secondary)] group-hover:text-white transition-colors">
                   {file ? (
-                    <span className="text-cyan-400 font-semibold">{file.name}</span>
+                    <span className="text-cyan-400 font-extrabold font-mono uppercase">{file.name}</span>
                   ) : (
                     <span>Click to browse syllabus file</span>
                   )}
@@ -307,12 +316,12 @@ export default function SemesterCopilotPage() {
               <Button
                 type="submit"
                 disabled={!file || isUploading}
-                className="w-full h-10 rounded-xl text-xs font-semibold cursor-pointer shadow-[0_4px_12px_rgba(0,210,255,0.15)] bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-black flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-xl text-xs font-extrabold cursor-pointer shadow-[0_4px_15px_rgba(0,210,255,0.15)] bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-95 text-black flex items-center justify-center gap-2"
               >
                 {isUploading ? (
                   <>
                     <Loader2 size={14} className="animate-spin text-black" />
-                    Parsing syllabus & mapping roadmaps...
+                    Compiling vector syllabus roadmap...
                   </>
                 ) : (
                   <>
@@ -328,66 +337,58 @@ export default function SemesterCopilotPage() {
       ) : (
 
         /* Semester Dashboard Layout */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           
           {/* Left Column: Syllabus breakdown & Course Details */}
           <div className="space-y-6">
             
             {/* Course Header card */}
-            <GlassCard className="p-5 border-[var(--border-glass)]/70 relative overflow-hidden">
-              {/* Highlight gradient glow */}
-              <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+            <GlassCard className="p-5 border-[var(--border-glass)] relative overflow-hidden bg-[var(--surface-bg)] shadow-md select-none">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--accent-blue-glow)] rounded-full blur-3xl pointer-events-none" />
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <span className="px-2 py-0.5 rounded bg-[var(--accent-blue-glow)] text-[8.5px] font-extrabold text-[var(--accent-blue)] border border-[var(--accent-blue)]/20 font-mono">
                     {selectedPlan.subject_code || 'COURSE'}
                   </span>
-                  <h2 className="text-lg font-bold font-heading text-[var(--text-primary)] mt-1.5 leading-tight">
+                  <h2 className="text-lg font-black text-white mt-2 leading-tight font-heading">
                     {selectedPlan.subject_name}
                   </h2>
                 </div>
 
-                <div className="flex items-center gap-6 text-[10px] border-t border-[var(--border-glass)]/40 pt-3 text-[var(--text-secondary)]">
+                <div className="flex items-center gap-5 text-[10px] border-t border-[var(--border-glass)]/40 pt-3 text-[var(--text-secondary)] font-semibold">
                   <div className="flex items-center gap-1.5">
                     <ListChecks size={12} className="text-purple-400" />
-                    <span>{selectedPlan.units.length} Syllabus Units</span>
+                    <span>{selectedPlan.units.length} Modules</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Award size={12} className="text-emerald-400" />
-                    <span>{selectedPlan.practicals.length} Practical Labs</span>
+                    <span>{selectedPlan.practicals.length} Lab Components</span>
                   </div>
                 </div>
               </div>
             </GlassCard>
 
             {/* Overall Subject Readiness Progress */}
-            <GlassCard className="p-5 border-[var(--border-glass)]/70 flex items-center justify-between gap-4">
+            <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] flex items-center justify-between gap-4 shadow-md select-none">
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
                   <TrendingUp size={14} className="text-cyan-400" />
-                  Subject Readiness
+                  Syllabus Metrics
                 </h3>
-                <p className="text-[10px] text-[var(--text-secondary)] leading-tight max-w-[160px]">
+                <p className="text-[10px] text-[var(--text-secondary)] leading-normal max-w-[160px]">
                   Estimated progress based on completed roadmap tasks.
                 </p>
-                <div className="text-xs font-semibold text-[var(--text-primary)] pt-1">
-                  {stats.completed} / {stats.total} Tasks Done
+                <div className="text-[10px] font-extrabold text-white pt-1.5 font-mono">
+                  {stats.completed} / {stats.total} TASKS DONE
                 </div>
               </div>
 
               {/* Radial Score Gauge */}
               <div className="relative w-18 h-18 shrink-0 flex items-center justify-center">
                 <svg className="w-full h-full transform -rotate-90">
-                  <circle
-                    cx="36"
-                    cy="36"
-                    r="30"
-                    stroke="rgba(255,255,255,0.05)"
-                    strokeWidth="5"
-                    fill="transparent"
-                  />
-                  <circle
+                  <circle cx="36" cy="36" r="30" stroke="rgba(255,255,255,0.04)" strokeWidth="5" fill="transparent" />
+                  <motion.circle
                     cx="36"
                     cy="36"
                     r="30"
@@ -395,28 +396,29 @@ export default function SemesterCopilotPage() {
                     strokeWidth="5"
                     fill="transparent"
                     strokeDasharray={2 * Math.PI * 30}
-                    strokeDashoffset={2 * Math.PI * 30 * (1 - stats.progress / 100)}
+                    initial={{ strokeDashoffset: 2 * Math.PI * 30 }}
+                    animate={{ strokeDashoffset: 2 * Math.PI * 30 * (1 - stats.progress / 100) }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
                     strokeLinecap="round"
-                    className="transition-all duration-500"
                   />
                   <defs>
                     <linearGradient id="progressGlow" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#00d2ff" />
-                      <stop offset="100%" stopColor="#d946ef" />
+                      <stop offset="100%" stopColor="#9d4edd" />
                     </linearGradient>
                   </defs>
                 </svg>
-                <span className="absolute text-xs font-bold text-[var(--text-primary)]">
+                <span className="absolute text-xs font-bold text-white font-mono">
                   {stats.progress}%
                 </span>
               </div>
             </GlassCard>
 
             {/* Marks Distribution Donut (Custom SVG Chart) */}
-            <GlassCard className="p-5 border-[var(--border-glass)]/70 space-y-4">
-              <h3 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+            <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] space-y-4 shadow-md select-none">
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
                 <Percent size={14} className="text-purple-400" />
-                Marks Distribution
+                Marks Weightage
               </h3>
 
               <div className="flex items-center gap-6 justify-center py-2">
@@ -424,74 +426,71 @@ export default function SemesterCopilotPage() {
                 <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.03)" strokeWidth="10" fill="transparent" />
-                    
-                    {/* Ring segment for Final Exam */}
                     <circle
                       cx="50"
                       cy="50"
                       r="40"
-                      stroke="#06b6d4" // Cyan
+                      stroke="#00d2ff"
                       strokeWidth="10"
                       fill="transparent"
                       strokeDasharray="251.2"
                       strokeDashoffset={251.2 * (1 - selectedPlan.marks_distribution.finalExam / 100)}
                     />
-                    {/* Inner layers for remaining segments would overlay, but showing main distribution visually */}
                   </svg>
                   <div className="absolute text-center">
-                    <span className="text-[10px] text-[var(--text-secondary)] uppercase block font-bold tracking-wider">Exam</span>
-                    <span className="text-sm font-black text-cyan-400">{selectedPlan.marks_distribution.finalExam}%</span>
+                    <span className="text-[9px] text-[var(--text-secondary)] uppercase block font-bold tracking-widest">Final</span>
+                    <span className="text-sm font-black text-[var(--accent-blue)]">{selectedPlan.marks_distribution.finalExam}%</span>
                   </div>
                 </div>
 
                 {/* Legend list */}
                 <div className="space-y-2 text-[10px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-cyan-400 block shrink-0" />
+                    <span className="w-2 h-2 rounded bg-cyan-400 block shrink-0" />
                     <span className="text-[var(--text-secondary)] font-semibold">Final Exam:</span>
-                    <span className="font-bold text-[var(--text-primary)]">{selectedPlan.marks_distribution.finalExam}%</span>
+                    <span className="font-bold text-white">{selectedPlan.marks_distribution.finalExam}%</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-purple-400 block shrink-0" />
+                    <span className="w-2 h-2 rounded bg-purple-400 block shrink-0" />
                     <span className="text-[var(--text-secondary)] font-semibold">Internals:</span>
-                    <span className="font-bold text-[var(--text-primary)]">{selectedPlan.marks_distribution.internalExams}%</span>
+                    <span className="font-bold text-white">{selectedPlan.marks_distribution.internalExams}%</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-emerald-400 block shrink-0" />
-                    <span className="text-[var(--text-secondary)] font-semibold">Practicals:</span>
-                    <span className="font-bold text-[var(--text-primary)]">{selectedPlan.marks_distribution.practicals}%</span>
+                    <span className="w-2 h-2 rounded bg-emerald-400 block shrink-0" />
+                    <span className="text-[var(--text-secondary)] font-semibold">Labs/Viva:</span>
+                    <span className="font-bold text-white">{selectedPlan.marks_distribution.practicals}%</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-orange-400 block shrink-0" />
-                    <span className="text-[var(--text-secondary)] font-semibold">Labs/Projects:</span>
-                    <span className="font-bold text-[var(--text-primary)]">{(selectedPlan.marks_distribution.projects + selectedPlan.marks_distribution.assignments)}%</span>
+                    <span className="w-2 h-2 rounded bg-orange-400 block shrink-0" />
+                    <span className="text-[var(--text-secondary)] font-semibold">Projects:</span>
+                    <span className="font-bold text-white">{(selectedPlan.marks_distribution.projects + selectedPlan.marks_distribution.assignments)}%</span>
                   </div>
                 </div>
               </div>
             </GlassCard>
 
-            {/* Units & Topics List */}
-            <GlassCard className="p-5 border-[var(--border-glass)]/70 space-y-3">
-              <h3 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+            {/* Units & Topics Accordion Details */}
+            <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] space-y-3 shadow-md">
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider select-none">
                 <BookOpen size={14} className="text-emerald-400" />
-                Syllabus Topics
+                Unit Outline Modules
               </h3>
 
-              <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+              <div className="space-y-3.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
                 {selectedPlan.units.map(unit => (
                   <div key={unit.unitNumber} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-bold">
-                      <span className="text-cyan-400 uppercase tracking-wide">Unit {unit.unitNumber}</span>
+                    <div className="flex items-center justify-between text-[9px] font-bold font-mono uppercase select-none">
+                      <span className="text-cyan-400">Unit {unit.unitNumber}</span>
                       <span className="text-[var(--text-secondary)]">Weight: {unit.weightage}%</span>
                     </div>
-                    <h4 className="text-xs font-bold text-[var(--text-primary)] leading-snug">
+                    <h4 className="text-xs font-bold text-white leading-normal font-heading">
                       {unit.title}
                     </h4>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 select-none">
                       {unit.topics.map((topic, i) => (
                         <span 
                           key={i} 
-                          className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-[var(--text-secondary)] font-medium"
+                          className="px-2 py-0.5 rounded bg-white/5 border border-white/5 text-[9px] text-[var(--text-secondary)] font-semibold"
                         >
                           {topic}
                         </span>
@@ -508,36 +507,36 @@ export default function SemesterCopilotPage() {
           <div className="lg:col-span-2 space-y-6">
             
             {/* Roadmap Tab view */}
-            <GlassCard className="p-5 border-[var(--border-glass)]/70 space-y-5">
+            <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] space-y-5 shadow-md">
               
               {/* Tab Navigation header */}
-              <div className="flex items-center justify-between border-b border-[var(--border-glass)]/40 pb-3 flex-wrap gap-2">
-                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                  Roadmap Calendar
+              <div className="flex items-center justify-between border-b border-[var(--border-glass)] pb-3 flex-wrap gap-2 select-none">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Timeline Agenda
                 </h3>
                 
-                <div className="flex items-center gap-1 bg-[#16171E] border border-[var(--border-glass)]/70 p-1 rounded-xl text-[10px]">
+                <div className="flex items-center gap-1 bg-black/40 border border-white/5 p-1 rounded-xl text-[10px]">
                   <button
                     onClick={() => setActiveTab('weekly')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'weekly' ? 'bg-cyan-500 text-black shadow' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'weekly' ? 'bg-[var(--accent-blue)] text-black shadow' : 'text-[var(--text-secondary)] hover:text-white'}`}
                   >
-                    Weekly Focus
+                    Weekly Gantt
                   </button>
                   <button
                     onClick={() => setActiveTab('daily')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'daily' ? 'bg-cyan-500 text-black shadow' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'daily' ? 'bg-[var(--accent-blue)] text-black shadow' : 'text-[var(--text-secondary)] hover:text-white'}`}
                   >
-                    Daily Tasks
+                    Daily Blocks
                   </button>
                   <button
                     onClick={() => setActiveTab('revision')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'revision' ? 'bg-cyan-500 text-black shadow' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'revision' ? 'bg-[var(--accent-blue)] text-black shadow' : 'text-[var(--text-secondary)] hover:text-white'}`}
                   >
-                    Revision
+                    Spaced Revision
                   </button>
                   <button
                     onClick={() => setActiveTab('practicals')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'practicals' ? 'bg-cyan-500 text-black shadow' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${activeTab === 'practicals' ? 'bg-[var(--accent-blue)] text-black shadow' : 'text-[var(--text-secondary)] hover:text-white'}`}
                   >
                     Labs
                   </button>
@@ -545,32 +544,32 @@ export default function SemesterCopilotPage() {
               </div>
 
               {/* Tab Content Display */}
-              <div className="space-y-4 min-h-[220px]">
+              <div className="space-y-4 min-h-[240px]">
                 
                 {/* Weekly Focus Tab */}
                 {activeTab === 'weekly' && (
                   <div className="space-y-4">
                     {selectedPlan.roadmaps.weekly.map((w) => (
-                      <div key={w.week} className="p-3.5 rounded-2xl bg-white/[0.01] border border-[var(--border-glass)]/30 space-y-2.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-cyan-400">Week {w.week} Focus</span>
-                          <span className="text-[10px] text-[var(--text-secondary)] font-medium bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
+                      <div key={w.week} className="p-4 rounded-2xl bg-black/25 border border-[var(--border-glass)] space-y-3">
+                        <div className="flex items-center justify-between text-xs select-none">
+                          <span className="font-extrabold text-[var(--accent-blue)] uppercase font-mono tracking-wider">Week {w.week} Focus</span>
+                          <span className="text-[9.5px] text-[var(--text-secondary)] font-extrabold bg-white/5 border border-white/5 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                             {w.focus}
                           </span>
                         </div>
-                        <div className="space-y-2 pt-1 border-t border-[var(--border-glass)]/30">
+                        <div className="space-y-2 pt-2 border-t border-[var(--border-glass)]/40">
                           {w.tasks.map((task, i) => {
                             const key = `${selectedPlan.id}-w-${w.week}-task-${i}`
                             const isDone = !!completedTasks[key]
                             return (
-                              <div key={i} className="flex items-start gap-2.5 text-xs">
+                              <div key={i} className="flex items-start gap-3 text-xs">
                                 <input
                                   type="checkbox"
                                   checked={isDone}
                                   onChange={() => toggleTask(key)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-black text-cyan-500 focus:ring-cyan-500/20 shrink-0 cursor-pointer accent-cyan-500"
+                                  className="w-4 h-4 rounded border-gray-600 bg-black text-[var(--accent-blue)] focus:ring-[var(--accent-blue-glow)] mt-0.5 shrink-0 cursor-pointer accent-[var(--accent-blue)]"
                                 />
-                                <span className={isDone ? 'line-through text-[var(--text-secondary)]/50' : 'text-[var(--text-primary)]'}>
+                                <span className={isDone ? 'line-through text-[var(--text-muted)]' : 'text-slate-200'}>
                                   {task}
                                 </span>
                               </div>
@@ -584,17 +583,17 @@ export default function SemesterCopilotPage() {
 
                 {/* Daily Checklist Tab */}
                 {activeTab === 'daily' && (
-                  <div className="space-y-3.5">
+                  <div className="space-y-3.5 select-none">
                     {selectedPlan.roadmaps.daily.map((d, i) => (
-                      <div key={i} className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white/[0.01] border border-[var(--border-glass)]/30">
+                      <div key={i} className="flex flex-col gap-2.5 p-4 rounded-2xl bg-black/25 border border-[var(--border-glass)]">
                         <div className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
-                          <Clock size={12} />
-                          {d.day} Study Block
+                          <Clock size={13} />
+                          {d.day} Study Target
                         </div>
-                        <div className="space-y-1.5 pl-4 border-l border-[var(--border-glass)]/40 text-xs text-[var(--text-primary)]">
+                        <div className="space-y-2 pl-4 border-l border-[var(--border-glass)]/40 text-xs text-slate-300">
                           {d.tasks.map((task, idx) => (
                             <div key={idx} className="flex items-center gap-2">
-                              <ChevronRight size={10} className="text-cyan-500" />
+                              <ChevronRight size={10} className="text-[var(--accent-blue)]" />
                               <span>{task}</span>
                             </div>
                           ))}
@@ -606,16 +605,16 @@ export default function SemesterCopilotPage() {
 
                 {/* Revision Schedule Tab */}
                 {activeTab === 'revision' && (
-                  <div className="space-y-3.5">
+                  <div className="space-y-3.5 select-none">
                     {selectedPlan.roadmaps.revision.map((r, i) => (
-                      <div key={i} className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.01] border border-[var(--border-glass)]/30 gap-4">
+                      <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-black/25 border border-[var(--border-glass)] gap-4">
                         <div className="space-y-1">
-                          <h4 className="text-xs font-bold text-[var(--text-primary)]">{r.topic}</h4>
-                          <span className="text-[10px] text-[var(--text-secondary)] font-medium">Spaced Recall Interval</span>
+                          <h4 className="text-xs font-bold text-white font-heading">{r.topic}</h4>
+                          <span className="text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-wider">Spaced Recall Timeline</span>
                         </div>
-                        <div className="flex flex-wrap gap-1 text-[9px] font-bold text-black uppercase">
+                        <div className="flex flex-wrap gap-1 text-[8.5px] font-extrabold text-black font-mono uppercase">
                           {r.dates.map((date, idx) => (
-                            <span key={idx} className="px-2 py-0.5 rounded bg-cyan-400 shrink-0">
+                            <span key={idx} className="px-2.5 py-0.5 rounded bg-[var(--accent-blue)] shrink-0 shadow-sm">
                               {date}
                             </span>
                           ))}
@@ -627,10 +626,13 @@ export default function SemesterCopilotPage() {
 
                 {/* Lab components Tab */}
                 {activeTab === 'practicals' && (
-                  <div className="space-y-3.5">
+                  <div className="space-y-3.5 select-none">
                     {selectedPlan.practicals.map((p, i) => (
-                      <div key={i} className="p-3.5 rounded-2xl bg-white/[0.01] border border-[var(--border-glass)]/30 space-y-1">
-                        <h4 className="text-xs font-bold text-emerald-400">{p.name}</h4>
+                      <div key={i} className="p-4 rounded-2xl bg-black/25 border border-[var(--border-glass)] space-y-2">
+                        <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                          <Award size={13} />
+                          {p.name}
+                        </h4>
                         <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">{p.description}</p>
                       </div>
                     ))}
@@ -641,25 +643,25 @@ export default function SemesterCopilotPage() {
             </GlassCard>
 
             {/* Exam Preparation Centre */}
-            <GlassCard className="p-5 border-[var(--border-glass)]/70 space-y-4">
-              <div className="flex items-center justify-between border-b border-[var(--border-glass)]/40 pb-3 flex-wrap gap-2">
-                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
+            <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] space-y-4 shadow-md">
+              <div className="flex items-center justify-between border-b border-[var(--border-glass)] pb-3 flex-wrap gap-2 select-none">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Calendar size={14} className="text-cyan-400" />
-                  Exam Prep Console
+                  Prep Checkpoints
                 </h3>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button
                     onClick={() => setExamPrepTab('internal')}
-                    className={`text-[10px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${examPrepTab === 'internal' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' : 'bg-transparent text-[var(--text-secondary)] border-transparent hover:text-[var(--text-primary)]'}`}
+                    className={`text-[9.5px] font-extrabold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${examPrepTab === 'internal' ? 'bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] border-[var(--accent-blue)]/20' : 'bg-transparent text-[var(--text-secondary)] border-transparent hover:text-white'}`}
                   >
-                    Internal Exams
+                    Internals
                   </button>
                   <button
                     onClick={() => setExamPrepTab('final')}
-                    className={`text-[10px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${examPrepTab === 'final' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' : 'bg-transparent text-[var(--text-secondary)] border-transparent hover:text-[var(--text-primary)]'}`}
+                    className={`text-[9.5px] font-extrabold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${examPrepTab === 'final' ? 'bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] border-[var(--accent-blue)]/20' : 'bg-transparent text-[var(--text-secondary)] border-transparent hover:text-white'}`}
                   >
-                    Final Exams
+                    Finals
                   </button>
                 </div>
               </div>
@@ -672,15 +674,18 @@ export default function SemesterCopilotPage() {
                   return (
                     <div 
                       key={i} 
-                      className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${isDone ? 'bg-white/[0.01] border-white/5 opacity-60' : 'bg-black/10 border-[var(--border-glass)]/30'}`}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-xl border transition-all select-none cursor-pointer",
+                        isDone ? 'bg-white/[0.01] border-transparent opacity-40' : 'bg-black/10 border-[var(--border-glass)]'
+                      )}
                     >
                       <input
                         type="checkbox"
                         checked={isDone}
                         onChange={() => toggleTask(key)}
-                        className="w-4 h-4 rounded border-gray-600 bg-black text-cyan-500 focus:ring-cyan-500/20 mt-0.5 shrink-0 cursor-pointer accent-cyan-500"
+                        className="w-4 h-4 rounded border-gray-600 bg-black text-[var(--accent-blue)] focus:ring-[var(--accent-blue-glow)] mt-0.5 shrink-0 cursor-pointer accent-[var(--accent-blue)]"
                       />
-                      <span className={`text-xs ${isDone ? 'line-through text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
+                      <span className={cn("text-xs leading-normal", isDone ? 'line-through text-[var(--text-secondary)]' : 'text-slate-200')}>
                         {task}
                       </span>
                     </div>
@@ -690,13 +695,13 @@ export default function SemesterCopilotPage() {
             </GlassCard>
 
             {/* Reset / Re-upload Option */}
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-2 select-none">
               <button
                 onClick={() => handleResetPlan(selectedPlan.id)}
-                className="text-[10px] font-bold text-rose-400/80 hover:text-rose-400 flex items-center gap-1 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/10 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                className="text-[9px] font-extrabold text-rose-400/90 hover:text-rose-300 flex items-center gap-1.5 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/10 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
               >
                 <RefreshCw size={10} />
-                Reset & Upload New Syllabus
+                RESET & UPLOAD SYLLABUS
               </button>
             </div>
 

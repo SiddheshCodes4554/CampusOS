@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useTransition } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/button'
@@ -10,13 +11,22 @@ import {
   Layers,
   Sparkles,
   Loader2,
-  CheckCircle,
+  CheckCircle2,
   Trash2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  TrendingUp,
+  Bookmark,
+  Calendar,
+  AlertTriangle,
+  HelpCircle,
+  Clock,
+  ArrowRight,
+  BookOpen
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-// Interface definition
+// Interface definitions
 interface BrainDocument {
   id: string
   file_name: string
@@ -253,20 +263,18 @@ export default function ExamIntelligencePage() {
 
   const { score: readinessScore, checkedCount, total: totalTopics } = getReadinessMetrics()
 
-
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-20 select-text">
       
       {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 select-none">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 select-none border-b border-[var(--border-glass)]/25 pb-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-400 to-rose-500 flex items-center justify-center text-black font-semibold shadow-[0_0_15px_rgba(244,63,94,0.3)]">
               <Flame size={18} />
             </div>
-            <h1 className="text-2xl font-bold font-heading tracking-tight text-[var(--text-primary)]">
-              Exam Intelligence Engine
+            <h1 className="text-2xl font-extrabold tracking-tight text-white font-heading">
+              Exam Intelligence
             </h1>
           </div>
           <p className="text-xs text-[var(--text-secondary)]">
@@ -285,7 +293,7 @@ export default function ExamIntelligencePage() {
       {loading ? (
         <div className="py-20 flex flex-col gap-3 justify-center items-center select-none">
           <Loader2 className="animate-spin text-cyan-400" size={32} />
-          <span className="text-xs text-[var(--text-muted)] font-semibold">Loading Exam Predictor...</span>
+          <span className="text-xs text-[var(--text-muted)] font-semibold">Tethering Diagnostics...</span>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -294,14 +302,14 @@ export default function ExamIntelligencePage() {
           <div className="lg:col-span-4 space-y-6">
             
             {/* Setup Diagnostic Analysis card */}
-            <GlassCard className="p-5 border-[var(--border-glass)]/70 space-y-4">
-              <h2 className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--border-glass)] pb-2 select-none">
+            <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] space-y-4 shadow-md">
+              <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 border-b border-[var(--border-glass)] pb-2.5 select-none">
                 Predict Exam Patterns
               </h2>
 
               {/* Subject Title */}
               <div className="space-y-1.5">
-                <label className="text-[9px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
+                <label className="text-[9.5px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
                   Subject / Course Name
                 </label>
                 <input
@@ -310,17 +318,17 @@ export default function ExamIntelligencePage() {
                   value={subjectName}
                   onChange={(e) => setSubjectName(e.target.value)}
                   disabled={isPending}
-                  className="w-full bg-[#16171E] border border-[var(--border-glass)]/70 rounded-xl px-4 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full bg-[#16171E] border border-[var(--border-glass)] rounded-xl px-4 py-2.5 text-xs text-white placeholder-[var(--text-muted)] outline-none focus:border-cyan-500 transition-colors"
                 />
               </div>
 
               {/* File selectors */}
-              <div className="space-y-3.5">
+              <div className="space-y-4">
                 
                 {/* 1. Syllabus documents */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
-                    Select Syllabus (Ground Truth)
+                  <label className="text-[9.5px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
+                    Select Syllabus
                   </label>
                   {syllabi.length === 0 ? (
                     <p className="text-[9px] text-[var(--text-muted)] italic leading-relaxed select-none">Syllabus file missing. Upload syllabus in Academic Brain first.</p>
@@ -330,7 +338,7 @@ export default function ExamIntelligencePage() {
                         <div
                           key={doc.id}
                           onClick={() => setSelectedSyllabus(prev => ({ ...prev, [doc.id]: !prev[doc.id] }))}
-                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.02] cursor-pointer text-[10px] font-semibold text-[var(--text-secondary)]"
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.01] cursor-pointer text-[10px] font-bold text-[var(--text-secondary)] border border-transparent hover:border-white/5"
                         >
                           <input
                             type="checkbox"
@@ -347,7 +355,7 @@ export default function ExamIntelligencePage() {
 
                 {/* 2. Lecture Notes */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
+                  <label className="text-[9.5px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
                     Select Study Notes
                   </label>
                   {notesFiles.length === 0 ? (
@@ -358,7 +366,7 @@ export default function ExamIntelligencePage() {
                         <div
                           key={doc.id}
                           onClick={() => setSelectedNotes(prev => ({ ...prev, [doc.id]: !prev[doc.id] }))}
-                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.02] cursor-pointer text-[10px] font-semibold text-[var(--text-secondary)]"
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.01] cursor-pointer text-[10px] font-bold text-[var(--text-secondary)] border border-transparent hover:border-white/5"
                         >
                           <input
                             type="checkbox"
@@ -375,7 +383,7 @@ export default function ExamIntelligencePage() {
 
                 {/* 3. PYQs */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
+                  <label className="text-[9.5px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)] select-none">
                     Select Past Question Papers (PYQs)
                   </label>
                   {pyqs.length === 0 ? (
@@ -386,7 +394,7 @@ export default function ExamIntelligencePage() {
                         <div
                           key={doc.id}
                           onClick={() => setSelectedPYQs(prev => ({ ...prev, [doc.id]: !prev[doc.id] }))}
-                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.02] cursor-pointer text-[10px] font-semibold text-[var(--text-secondary)]"
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.01] cursor-pointer text-[10px] font-bold text-[var(--text-secondary)] border border-transparent hover:border-white/5"
                         >
                           <input
                             type="checkbox"
@@ -406,16 +414,16 @@ export default function ExamIntelligencePage() {
               <Button
                 onClick={handleAnalyzeExamPatterns}
                 disabled={isPending}
-                className="w-full bg-gradient-to-r from-amber-400 to-rose-500 text-black text-xs font-bold py-3.5 h-10 select-none shadow-[0_4px_15px_rgba(244,63,94,0.22)] border-0 cursor-pointer rounded-xl flex items-center justify-center gap-1.5"
+                className="w-full bg-gradient-to-r from-amber-400 to-rose-500 text-black text-xs font-bold py-3.5 h-11 select-none shadow-[0_4px_15px_rgba(244,63,94,0.22)] border-0 cursor-pointer rounded-xl flex items-center justify-center gap-1.5 active:scale-97 transition-all"
               >
                 {isPending ? (
                   <>
-                    <Loader2 size={13} className="animate-spin" />
+                    <Loader2 size={13} className="animate-spin text-black" />
                     Analyzing Repeat Patterns...
                   </>
                 ) : (
                   <>
-                    <Sparkles size={13} />
+                    <Sparkles size={13} className="text-black" />
                     Generate Exam Intelligence
                   </>
                 )}
@@ -423,9 +431,9 @@ export default function ExamIntelligencePage() {
             </GlassCard>
 
             {/* Diagnostic History Card */}
-            <GlassCard className="p-4 border-[var(--border-glass)]/70 flex flex-col gap-3 max-h-[35vh]">
-              <h2 className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--border-glass)] pb-2 select-none">
-                Saved Courses Predictions
+            <GlassCard className="p-4 border-[var(--border-glass)] bg-[var(--surface-bg)] flex flex-col gap-3 max-h-[35vh]">
+              <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 border-b border-[var(--border-glass)] pb-2 select-none">
+                Saved Diagnostic Archive
               </h2>
               
               {reports.length === 0 ? (
@@ -438,15 +446,16 @@ export default function ExamIntelligencePage() {
                       <div
                         key={rep.id}
                         onClick={() => setActiveReport(rep)}
-                        className={`group flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                        className={cn(
+                          "group flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer select-none",
                           isActive
-                            ? 'bg-white/5 border-rose-500/50 shadow-md'
-                            : 'border-white/5 bg-black/15 hover:bg-white/[0.02]'
-                        }`}
+                            ? 'bg-white/5 border-rose-500/30 shadow-md'
+                            : 'border-white/5 bg-black/15 hover:bg-white/[0.01]'
+                        )}
                       >
                         <div className="flex items-center gap-2 truncate flex-1">
                           <Flame size={12} className={isActive ? 'text-rose-400' : 'text-[var(--text-secondary)]'} />
-                          <span className={`text-[11px] font-bold truncate ${isActive ? 'text-rose-400' : 'text-[var(--text-secondary)]'}`}>
+                          <span className={cn("text-[11px] font-bold truncate", isActive ? 'text-rose-400' : 'text-slate-300')}>
                             {rep.subject_name}
                           </span>
                         </div>
@@ -475,15 +484,15 @@ export default function ExamIntelligencePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
                   {/* Subject Details Banner */}
-                  <GlassCard className="p-5 border-white/5 bg-[#12131A]/60 md:col-span-2 flex flex-col justify-between">
+                  <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] md:col-span-2 flex flex-col justify-between shadow-md">
                     <div>
-                      <span className="text-[8px] font-extrabold uppercase tracking-widest text-rose-400">Diagostic Analysis</span>
-                      <h2 className="text-xl font-extrabold font-heading text-[var(--text-primary)] mt-1 truncate">
+                      <span className="text-[8px] font-extrabold uppercase tracking-widest text-rose-400 font-mono">Diagostic Analysis</span>
+                      <h2 className="text-lg font-black text-white mt-1.5 leading-tight font-heading truncate">
                         {activeReport.subject_name}
                       </h2>
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-[var(--text-secondary)] font-semibold mt-4">
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
                         <Layers size={12} className="text-cyan-400" />
                         {activeReport.analysis.highPriorityChapters?.length || 0} Priority Chapters
                       </span>
@@ -495,28 +504,18 @@ export default function ExamIntelligencePage() {
                   </GlassCard>
 
                   {/* Circular SVG Exam Readiness Gauge */}
-                  <GlassCard className="p-5 border-white/5 bg-[#12131A]/60 flex items-center justify-between gap-4">
+                  <GlassCard className="p-5 border-[var(--border-glass)] bg-[var(--surface-bg)] flex items-center justify-between gap-4 shadow-md">
                     <div className="space-y-1 select-none">
-                      <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)]">Readiness Score</h3>
-                      <p className="text-[10px] text-[var(--text-secondary)] font-medium leading-tight">
-                        {checkedCount} of {totalTopics} topics prepared.
+                      <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Readiness</h3>
+                      <p className="text-[9.5px] text-[var(--text-secondary)] font-medium leading-normal max-w-[130px]">
+                        {checkedCount} of {totalTopics} topics prepped.
                       </p>
                     </div>
 
                     {/* Circular dial */}
-                    <div className="relative w-16 h-16 flex items-center justify-center shrink-0 select-none">
+                    <div className="relative w-15 h-15 flex items-center justify-center shrink-0 select-none">
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        {/* Background track circle */}
-                        <circle
-                          className="text-white/5"
-                          strokeWidth="3.5"
-                          stroke="currentColor"
-                          fill="transparent"
-                          r="15.915"
-                          cx="18"
-                          cy="18"
-                        />
-                        {/* Progress ring */}
+                        <circle className="text-white/5" strokeWidth="3.5" stroke="currentColor" fill="transparent" r="15.915" cx="18" cy="18" />
                         <circle
                           className="text-rose-500 transition-all duration-500 ease-out"
                           strokeDasharray={`${readinessScore}, 100`}
@@ -530,7 +529,7 @@ export default function ExamIntelligencePage() {
                           style={{ filter: 'drop-shadow(0 0 4px rgba(244,63,94,0.4))' }}
                         />
                       </svg>
-                      <span className="absolute text-xs font-black text-[var(--text-primary)]">
+                      <span className="absolute text-xs font-bold text-white font-mono">
                         {readinessScore}%
                       </span>
                     </div>
@@ -538,63 +537,77 @@ export default function ExamIntelligencePage() {
 
                 </div>
 
-                {/* SVG Topic Heatmap matrix */}
+                {/* Priority Matrix Grid (Eisenhower Matrix style) */}
                 <GlassCard className="p-5 border-white/5 bg-[#12131A]/60 space-y-4">
-                  <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] border-b border-white/5 pb-2 flex items-center justify-between select-none">
-                    <span>Topic Heatmap Matrix</span>
-                    <span className="text-[8px] text-[var(--text-muted)] lowercase font-normal italic">Click cards to toggle preparation status</span>
+                  <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-white/5 pb-2.5 flex items-between select-none">
+                    <span>Priority Topic Matrix</span>
                   </h3>
 
                   {activeReport.analysis.heatmapTopics && activeReport.analysis.heatmapTopics.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-                      {activeReport.analysis.heatmapTopics.map((topic, idx) => {
-                        const isPrepped = activeReport.readiness_checklist?.[topic.topicName] ?? false
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Quadrant 1: High Importance / High Marks (Focus first) */}
+                      <div className="p-4 bg-rose-500/[0.02] border border-rose-500/10 rounded-2xl space-y-3">
+                        <span className="text-[8.5px] font-extrabold text-rose-400 uppercase tracking-widest flex items-center gap-1 font-mono select-none">
+                          <Flame size={11} className="animate-pulse" /> FOCUS FIRST // HIGH WEIGHTAGE
+                        </span>
                         
-                        // Setup card color weights
-                        let borderCls = 'border-white/5 hover:border-white/20 hover:bg-white/[0.01]'
-                        let priorityIndicator = <div className="w-1.5 h-1.5 rounded-full bg-teal-400" title="Low Weight" />
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5 custom-scrollbar">
+                          {activeReport.analysis.heatmapTopics
+                            .filter(t => t.importance.toLowerCase() === 'high')
+                            .map((topic, idx) => {
+                              const isPrepped = activeReport.readiness_checklist?.[topic.topicName] ?? false
+                              return (
+                                <div
+                                  key={idx}
+                                  onClick={() => handleToggleTopic(topic.topicName)}
+                                  className={cn(
+                                    "p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-1",
+                                    isPrepped ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-white/5 bg-black/20 hover:border-white/10"
+                                  )}
+                                >
+                                  <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider font-mono">{topic.chapterName}</span>
+                                  <p className={cn("text-xs font-bold", isPrepped ? "line-through text-[var(--text-muted)]" : "text-white")}>{topic.topicName}</p>
+                                  <div className="flex justify-between text-[8px] font-mono text-[var(--text-muted)] mt-1">
+                                    <span>Weight: ~{topic.estimatedMarksWeightage}%</span>
+                                    <span>PYQ Count: {topic.pyqOccurrence}</span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                        </div>
+                      </div>
 
-                        if (topic.importance.toLowerCase() === 'high') {
-                          borderCls = 'border-rose-500/10 hover:border-rose-500/30 hover:bg-rose-500/[0.01]'
-                          priorityIndicator = <div className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]" title="High Priority" />
-                        } else if (topic.importance.toLowerCase() === 'medium') {
-                          borderCls = 'border-amber-500/10 hover:border-amber-500/30 hover:bg-amber-500/[0.01]'
-                          priorityIndicator = <div className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Medium Priority" />
-                        }
-
-                        // Completed styling overriding standard borders
-                        if (isPrepped) {
-                          borderCls = 'border-emerald-500/30 bg-emerald-500/[0.03] hover:bg-emerald-500/[0.05]'
-                        }
-
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => handleToggleTopic(topic.topicName)}
-                            className={`p-3.5 rounded-xl border flex flex-col justify-between gap-3.5 cursor-pointer transition-all ${borderCls}`}
-                          >
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[7.5px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] truncate max-w-[120px]">
-                                  {topic.chapterName}
-                                </span>
-                                {priorityIndicator}
-                              </div>
-                              <p className={`text-[11px] font-bold leading-snug ${isPrepped ? 'line-through text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}>
-                                {topic.topicName}
-                              </p>
-                            </div>
-
-                            {/* Marks weightage and pyq occurrences indicators */}
-                            <div className="flex items-center justify-between border-t border-white/5 pt-2 text-[9px] text-[var(--text-secondary)] font-semibold select-none">
-                              <span>Marks: ~{topic.estimatedMarksWeightage}</span>
-                              <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-[8px] text-[var(--text-muted)]">
-                                {topic.pyqOccurrence} PYQ appearances
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })}
+                      {/* Quadrant 2: Medium/Low Importance */}
+                      <div className="p-4 bg-cyan-500/[0.02] border border-cyan-500/10 rounded-2xl space-y-3">
+                        <span className="text-[8.5px] font-extrabold text-[var(--accent-blue)] uppercase tracking-widest flex items-center gap-1 font-mono select-none">
+                          <TrendingUp size={11} /> SECONDARY CONCEPTS
+                        </span>
+                        
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5 custom-scrollbar">
+                          {activeReport.analysis.heatmapTopics
+                            .filter(t => t.importance.toLowerCase() !== 'high')
+                            .map((topic, idx) => {
+                              const isPrepped = activeReport.readiness_checklist?.[topic.topicName] ?? false
+                              return (
+                                <div
+                                  key={idx}
+                                  onClick={() => handleToggleTopic(topic.topicName)}
+                                  className={cn(
+                                    "p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-1",
+                                    isPrepped ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-white/5 bg-black/20 hover:border-white/10"
+                                  )}
+                                >
+                                  <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider font-mono">{topic.chapterName}</span>
+                                  <p className={cn("text-xs font-bold", isPrepped ? "line-through text-[var(--text-muted)]" : "text-white")}>{topic.topicName}</p>
+                                  <div className="flex justify-between text-[8px] font-mono text-[var(--text-muted)] mt-1">
+                                    <span>Weight: ~{topic.estimatedMarksWeightage}%</span>
+                                    <span>PYQ Count: {topic.pyqOccurrence}</span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-xs text-[var(--text-muted)] py-4 select-none text-center">No topic heatmap records available.</p>
@@ -605,9 +618,9 @@ export default function ExamIntelligencePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   
                   {/* High Priority Chapters List */}
-                  <GlassCard className="p-5 border-white/5 bg-[#12131A]/60 flex flex-col gap-3 max-h-[50vh] overflow-hidden">
-                    <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] border-b border-white/5 pb-2 select-none flex items-center justify-between">
-                      <span>High Priority Chapters</span>
+                  <GlassCard className="p-5 border-white/5 bg-[#12131A]/60 flex flex-col gap-3 max-h-[50vh] overflow-hidden shadow-md">
+                    <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-white/5 pb-2.5 select-none flex items-center justify-between">
+                      <span>Chapter Weight Rankings</span>
                       <span className="text-[8px] text-[var(--text-muted)] font-normal uppercase tracking-widest">Weight Score</span>
                     </h3>
 
@@ -616,20 +629,20 @@ export default function ExamIntelligencePage() {
                         {activeReport.analysis.highPriorityChapters
                           .sort((a, b) => b.importanceScore - a.importanceScore)
                           .map((ch, idx) => {
-                            let barColor = 'bg-teal-400'
+                            let barColor = 'bg-[var(--accent-blue)]'
                             if (ch.importanceScore >= 80) barColor = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'
-                            else if (ch.importanceScore >= 50) barColor = 'bg-amber-400'
+                            else if (ch.importanceScore >= 50) barColor = 'bg-purple-500'
 
                             return (
                               <div key={idx} className="space-y-1.5 text-xs">
                                 <div className="flex items-center justify-between font-bold">
-                                  <span className="text-[11px] text-[var(--text-primary)] truncate max-w-[180px]">{ch.chapterName}</span>
+                                  <span className="text-[11px] text-white truncate max-w-[180px]">{ch.chapterName}</span>
                                   <span className="text-[10px] text-cyan-400 font-mono">{ch.importanceScore}%</span>
                                 </div>
                                 <p className="text-[10px] leading-relaxed text-[var(--text-secondary)]">{ch.reason}</p>
                                 
                                 {/* Micro progress bar */}
-                                <div className="relative w-full h-1.5 bg-white/5 border border-white/5 rounded-full overflow-hidden select-none">
+                                <div className="relative w-full h-1.5 bg-black/40 border border-white/5 rounded-full overflow-hidden select-none">
                                   <div className={`h-full ${barColor}`} style={{ width: `${ch.importanceScore}%` }} />
                                 </div>
 
@@ -646,8 +659,8 @@ export default function ExamIntelligencePage() {
                   </GlassCard>
 
                   {/* Probable Questions Accordion */}
-                  <GlassCard className="p-5 border-white/5 bg-[#12131A]/60 flex flex-col gap-3 max-h-[50vh] overflow-hidden">
-                    <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] border-b border-white/5 pb-2 select-none">
+                  <GlassCard className="p-5 border-white/5 bg-[#12131A]/60 flex flex-col gap-3 max-h-[50vh] overflow-hidden shadow-md">
+                    <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-white/5 pb-2.5 select-none">
                       Probable Questions Forecast
                     </h3>
 
@@ -667,7 +680,7 @@ export default function ExamIntelligencePage() {
                                   <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[8px] font-bold uppercase tracking-wider select-none mr-2">
                                     {q.expectedMarks} Marks
                                   </span>
-                                  <span className="text-[11px] font-bold text-[var(--text-primary)] whitespace-normal">
+                                  <span className="text-[11px] font-bold text-white whitespace-normal">
                                     {q.question}
                                   </span>
                                 </div>
@@ -676,11 +689,11 @@ export default function ExamIntelligencePage() {
 
                               {/* Accordion Outline */}
                               {isOpen && (
-                                <div className="p-4 bg-black/35 border-t border-white/5 space-y-2 text-[10px] leading-relaxed text-[var(--text-secondary)] select-text animate-fadeIn">
+                                <div className="p-4 bg-black/35 border-t border-white/5 space-y-2 text-[10px] leading-relaxed text-[var(--text-secondary)] select-text">
                                   <div className="flex items-center justify-between select-none">
                                     <span className="text-[8px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">Chapter: {q.chapterName}</span>
-                                    <span className="text-[8px] font-extrabold text-emerald-400 uppercase tracking-widest flex items-center gap-1">
-                                      <CheckCircle size={8} className="text-emerald-400" />
+                                    <span className="text-[8px] font-extrabold text-emerald-400 uppercase tracking-widest flex items-center gap-1 font-mono">
+                                      <CheckCircle2 size={8} className="text-emerald-400" />
                                       Verified Predict
                                     </span>
                                   </div>
@@ -705,9 +718,9 @@ export default function ExamIntelligencePage() {
               </div>
             ) : (
               // Empty selection prompt
-              <GlassCard className="p-12 border-white/5 bg-[#12131A]/60 flex flex-col items-center justify-center text-center gap-3 min-h-[50vh] select-none">
+              <GlassCard className="p-12 border-white/5 bg-[#12131A]/60 flex flex-col items-center justify-center text-center gap-3 min-h-[50vh] select-none shadow-md">
                 <Flame size={44} className="text-[var(--text-muted)] animate-pulse" />
-                <h3 className="text-md font-bold text-[var(--text-primary)] mt-2">Exam Intelligence Diagnostic Center</h3>
+                <h3 className="text-md font-bold text-white mt-2">Exam Intelligence Console</h3>
                 <p className="text-xs text-[var(--text-muted)] max-w-sm leading-relaxed">
                   Provide a subject title and select the corresponding syllabus, class study notes, and previous year papers inside the setup panel to identify trends and probable questions.
                 </p>

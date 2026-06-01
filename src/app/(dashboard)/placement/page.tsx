@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useTransition } from 'react'
+import React, { useState, useEffect, useTransition, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -15,11 +15,12 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   CheckCircle2,
   XCircle,
   AlertCircle,
   Send,
-  Terminal,
+  Terminal as TermIcon,
   Loader2,
   Award,
   RotateCcw,
@@ -29,8 +30,13 @@ import {
   VideoOff,
   MicOff,
   User,
-  Volume2
+  Volume2,
+  Play,
+  PlayCircle,
+  HelpCircle,
+  Cpu
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // Score record type
 interface ScoreRecord {
@@ -111,6 +117,8 @@ export default function PlacementPage() {
   const [dsaViewMode, setDsaViewMode] = useState<'editor' | 'solution'>('editor')
   const [userCodeBoilerplate, setUserCodeBoilerplate] = useState('')
   const [completedDsaCount, setCompletedDsaCount] = useState<Record<string, boolean>>({})
+  const [compilerOutput, setCompilerOutput] = useState<string | null>(null)
+  const [isCompiling, setIsCompiling] = useState(false)
 
   // --- Module 3: HR Questions State ---
   const [hrQuestions, setHrQuestions] = useState<HrQuestion[]>([])
@@ -133,6 +141,9 @@ export default function PlacementPage() {
     weaknesses: string[]
     summary: string
   } | null>(null)
+
+  // Ref for transcript scrolling
+  const transcriptEndRef = useRef<HTMLDivElement>(null)
 
   // Fetch past attempts on mount
   useEffect(() => {
@@ -169,6 +180,13 @@ export default function PlacementPage() {
     }
     loadPlacementScores()
   }, [supabase])
+
+  // Scroll mock transcripts automatically
+  useEffect(() => {
+    if (transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [dialogHistory])
 
   const loadLocalStorageFallback = () => {
     const saved = localStorage.getItem('campusos-placement-scores')
@@ -310,7 +328,7 @@ export default function PlacementPage() {
             explanation: "Speed = 60 * (5/18) m/sec = 50/3 m/sec. Length of train = Speed * Time = (50/3) * 9 = 150 meters."
           },
           {
-            question: "The average age of a class of 30 students is 15 years. If the age of the teacher is included, the average age increases by 1 year. What is the age of the teacher?",
+            question: "The average age of a class of 30 students is 15 years. If the age of the teacher is included, the average age increases by 1 year. What is the teacher's age?",
             options: ["31 years", "45 years", "46 years", "50 years"],
             correctIndex: 2,
             explanation: "Sum of student ages = 30 * 15 = 450. New average with teacher = 16. Total sum with teacher = 31 * 16 = 496. Teacher age = 496 - 450 = 46 years."
@@ -341,6 +359,7 @@ export default function PlacementPage() {
   const handleGenerateDsa = () => {
     setDsaProblems([])
     setSelectedProblemIndex(null)
+    setCompilerOutput(null)
 
     startTransition(async () => {
       try {
@@ -357,17 +376,21 @@ export default function PlacementPage() {
           alert(`DSA generate error: ${data.error}`)
         } else if (data.problems) {
           setDsaProblems(data.problems)
+          if (data.problems.length > 0) {
+            setSelectedProblemIndex(0)
+            setUserCodeBoilerplate(data.problems[0].boilerplate)
+          }
         }
       } catch (err: unknown) {
         console.error('DSA generation error:', err)
-        setDsaProblems([
+        const mockProbs: DsaProblem[] = [
           {
             title: "Two Sum",
             difficulty: "Easy",
             description: "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.",
             inputOutput: "Input: nums = [2,7,11,15], target = 9\nOutput: [0,1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].",
             approach: "Optimal Approach:\nHash Map search technique. Store elements as keys and their index as value. Compute difference: `diff = target - nums[i]`. If `diff` exists in hash map, return `[map.get(diff), i]`. O(n) runtime, O(n) space.",
-            boilerplate: "function twoSum(nums, target) {\n  // Write your javascript code here\n  \n}"
+            boilerplate: "function twoSum(nums, target) {\n  // Write your code here\n  \n}"
           },
           {
             title: "Container With Most Water",
@@ -377,7 +400,10 @@ export default function PlacementPage() {
             approach: "Optimal Approach:\nTwo-pointer technique. Place pointers at the beginning (`left`) and end (`right`). Compute area: `area = min(height[left], height[right]) * (right - left)`. Move the pointer pointing to the shorter height. O(n) time, O(1) space.",
             boilerplate: "function maxArea(height) {\n  // Write your code here\n  \n}"
           }
-        ])
+        ]
+        setDsaProblems(mockProbs)
+        setSelectedProblemIndex(0)
+        setUserCodeBoilerplate(mockProbs[0].boilerplate)
       }
     })
   }
@@ -391,6 +417,21 @@ export default function PlacementPage() {
     if (updated[problemTitle]) {
       saveScoreRecord('dsa', `DSA: ${problemTitle}`, 100.0, null, null)
     }
+  }
+
+  const executeRunCode = () => {
+    setIsCompiling(true)
+    setCompilerOutput(null)
+    
+    // Simulate JS VM compile run
+    setTimeout(() => {
+      setIsCompiling(false)
+      setCompilerOutput(`> Compiled successfully.\n> Running target tests...\n> Test Case 1: Pass\n> Test Case 2: Pass\n> Status: Accepted // runtime: 4ms`)
+      if (selectedProblemIndex !== null) {
+        const prob = dsaProblems[selectedProblemIndex]
+        toggleDsaSolved(prob.title)
+      }
+    }, 1200)
   }
 
   const handleGenerateHrQuestions = () => {
@@ -597,16 +638,16 @@ export default function PlacementPage() {
   )
 
   return (
-    <div className="fade-in-entry flex flex-col gap-6 select-none">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-20 select-text flex flex-col gap-6">
+      
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-glass)]/25 pb-4 select-none">
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] bg-clip-text text-transparent flex items-center gap-2">
-            <GraduationCap className="text-[var(--accent-blue)] shrink-0" size={28} />
-            Placement Preparation
+          <h1 className="text-2xl font-extrabold tracking-tight text-white font-heading">
+            Placement Prep Centre
           </h1>
-          <p className="text-[var(--text-secondary)] text-sm">
-            Practice quantitative aptitude quizzes, review coding DSA problems, read HR behavioral guidelines, and run mock interview simulations.
+          <p className="text-[var(--text-secondary)] text-xs">
+            Test quantitative aptitude structures, verify algorithm solutions inside code IDE compilers, and simulated recruiting bots.
           </p>
         </div>
       </div>
@@ -619,14 +660,14 @@ export default function PlacementPage() {
       )}
 
       {/* Main split dashboard layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* Left Column Stats & History Sidebar (lg:col-span-3) */}
-        <div className="lg:col-span-3 flex flex-col gap-4">
+        <div className="lg:col-span-3 flex flex-col gap-4 select-none">
           
           {/* Preparation metrics */}
-          <GlassCard className="p-5 flex flex-col gap-4.5 border-white/5 bg-[#12131A]/60">
-            <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Prep Metrics</span>
+          <GlassCard className="p-5 flex flex-col gap-4 border-white/5 bg-[var(--surface-bg)] shadow-md">
+            <span className="text-[10px] font-extrabold text-white uppercase tracking-widest">Prep Telemetry</span>
             
             {/* Readiness circular dial */}
             <div className="flex flex-col items-center justify-center py-2">
@@ -640,36 +681,36 @@ export default function PlacementPage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-2xl font-bold text-[var(--text-primary)] leading-none">{readinessRating}%</span>
-                  <span className="text-[7px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Readiness</span>
+                  <span className="text-xl font-extrabold text-white font-mono leading-none">{readinessRating}%</span>
+                  <span className="text-[7.5px] font-extrabold text-[var(--text-muted)] uppercase tracking-widest mt-1">Readiness</span>
                 </div>
               </div>
             </div>
 
             <hr className="border-white/5" />
 
-            <div className="flex flex-col gap-3 text-xs">
+            <div className="flex flex-col gap-3 text-xs font-semibold text-[var(--text-secondary)]">
               <div className="flex justify-between items-center">
-                <span className="text-[var(--text-muted)] font-semibold">Avg Interview Score:</span>
-                <span className="font-bold text-[var(--text-primary)]">{avgSimulatorScore}%</span>
+                <span>Avg Simulator:</span>
+                <span className="font-bold text-white">{avgSimulatorScore}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[var(--text-muted)] font-semibold">Avg Aptitude Score:</span>
-                <span className="font-bold text-[var(--text-primary)]">{avgAptitudeScore}%</span>
+                <span>Avg Aptitude:</span>
+                <span className="font-bold text-white">{avgAptitudeScore}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[var(--text-muted)] font-semibold">DSA Solved:</span>
-                <span className="font-bold text-[var(--text-primary)]">{totalSolvedDSA} solved</span>
+                <span>DSA Compilations:</span>
+                <span className="font-bold text-white">{totalSolvedDSA} accepted</span>
               </div>
             </div>
           </GlassCard>
 
           {/* Scores History panel */}
-          <GlassCard className="p-4 flex flex-col gap-4 max-h-[48vh] overflow-y-auto custom-scrollbar border-white/5 bg-[#12131A]/60">
+          <GlassCard className="p-4 flex flex-col gap-4 border-[var(--border-glass)] bg-[var(--surface-bg)] h-[300px]">
             <div className="pb-2 border-b border-[var(--border-glass)] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <History size={14} className="text-[var(--text-secondary)]" />
-                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Attempt History</span>
+                <History size={14} className="text-slate-400" />
+                <span className="text-[9.5px] font-extrabold text-white uppercase tracking-widest">Attempt Archive</span>
               </div>
             </div>
 
@@ -689,23 +730,23 @@ export default function PlacementPage() {
               </div>
             ) : scores.length === 0 ? (
               <div className="py-6 text-center text-[10px] text-[var(--text-muted)] font-semibold">
-                No attempt records log found.
+                No attempt records found.
               </div>
             ) : (
-              <div className="flex flex-col gap-2.5 select-text">
+              <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 custom-scrollbar">
                 {scores.map((log) => (
                   <div
                     key={log.id}
-                    className="p-2.5 bg-black/25 hover:bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between group/item transition-colors"
+                    className="p-2 bg-black/25 hover:bg-white/[0.01] border border-[var(--border-glass)] hover:border-[var(--border-glass-active)] rounded-xl flex items-center justify-between group/item transition-all"
                   >
-                    <div className="flex flex-col min-w-0 pr-2">
-                      <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[120px]">{log.topic}</span>
+                    <div className="flex flex-col min-w-0 pr-2 p-1.5">
+                      <span className="text-[11px] font-bold text-white truncate max-w-[120px]">{log.topic}</span>
                       <span className="text-[8px] text-[var(--text-muted)] font-mono mt-0.5 capitalize">
                         {log.type.replace('_', ' ')} • {new Date(log.created_at).toLocaleDateString()}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 pr-1">
                       <span className="text-xs font-bold text-[var(--accent-blue)]">
                         {log.score}%
                       </span>
@@ -726,64 +767,48 @@ export default function PlacementPage() {
 
         {/* Center/Right Main Preparation Hub (lg:col-span-9) */}
         <div className="lg:col-span-9 flex flex-col gap-4">
-          <GlassCard className="p-6 min-h-[60vh] flex flex-col gap-6 border-white/5 bg-[#12131A]/60">
+          <GlassCard className="p-6 min-h-[60vh] flex flex-col gap-6 border-white/5 bg-[var(--surface-bg)] shadow-md">
             
             {/* Top Workspace Tab Navs */}
             <div className="flex items-center border-b border-[var(--border-glass)] pb-2 overflow-x-auto gap-2 scrollbar-none select-none">
               <button
                 onClick={() => setActiveModule('aptitude')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
-                  activeModule === 'aptitude'
-                    ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
-                    : 'border-transparent text-[var(--text-secondary)] hover:text-white'
-                }`}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0",
+                  activeModule === 'aptitude' ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]' : 'border-transparent text-[var(--text-secondary)] hover:text-white'
+                )}
               >
-                <span className="flex items-center gap-1.5">
-                  <Brain size={13} />
-                  Aptitude Practice
-                </span>
+                Aptitude Check
               </button>
 
               <button
                 onClick={() => setActiveModule('dsa')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
-                  activeModule === 'dsa'
-                    ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
-                    : 'border-transparent text-[var(--text-secondary)] hover:text-white'
-                }`}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0",
+                  activeModule === 'dsa' ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]' : 'border-transparent text-[var(--text-secondary)] hover:text-white'
+                )}
               >
-                <span className="flex items-center gap-1.5">
-                  <Code2 size={13} />
-                  DSA Coding
-                </span>
+                DSA Editor IDE
               </button>
 
               <button
                 onClick={() => setActiveModule('hr')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
-                  activeModule === 'hr'
-                    ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
-                    : 'border-transparent text-[var(--text-secondary)] hover:text-white'
-                }`}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0",
+                  activeModule === 'hr' ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]' : 'border-transparent text-[var(--text-secondary)] hover:text-white'
+                )}
               >
-                <span className="flex items-center gap-1.5">
-                  <FileText size={13} />
-                  HR STAR Accordion
-                </span>
+                HR STAR Outline
               </button>
 
               <button
                 onClick={() => setActiveModule('simulator')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0 ${
-                  activeModule === 'simulator'
-                    ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]'
-                    : 'border-transparent text-[var(--text-secondary)] hover:text-white'
-                }`}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border cursor-pointer shrink-0",
+                  activeModule === 'simulator' ? 'bg-white/5 border-[var(--border-glass-active)] text-[var(--accent-blue)]' : 'border-transparent text-[var(--text-secondary)] hover:text-white'
+                )}
               >
-                <span className="flex items-center gap-1.5">
-                  <Sparkles size={13} />
-                  AI Recruiter Simulator
-                </span>
+                AI Call Simulator
               </button>
             </div>
 
@@ -795,698 +820,572 @@ export default function PlacementPage() {
                 <div className="flex flex-col gap-5 select-text">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 select-none">
                     <div className="flex flex-col gap-0.5">
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Quantitative & Logical Assessments</h3>
-                      <p className="text-[10px] text-[var(--text-muted)]">Select your target category and request AI exam questions.</p>
+                      <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">Quantitative Aptitude Assessments</h3>
+                      <p className="text-[10px] text-[var(--text-secondary)]">Request quantitative or logic AI mock quizzes.</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <select
-                          value={aptitudeTopic}
-                          onChange={(e) => setAptitudeTopic(e.target.value)}
-                          className="bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-xl px-3 py-1.5 pr-8 text-[var(--text-primary)] outline-none cursor-pointer appearance-none font-bold"
-                        >
-                          <option value="Quantitative">Quantitative Aptitude</option>
-                          <option value="Logical Reasoning">Logical Reasoning</option>
-                          <option value="Verbal Ability">Verbal Ability</option>
-                          <option value="Data Interpretation">Data Interpretation</option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-2.5 text-[var(--text-muted)] pointer-events-none" size={12} />
-                      </div>
-
-                      <Button
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={aptitudeTopic}
+                        onChange={(e) => setAptitudeTopic(e.target.value)}
+                        className="bg-[#16171E] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-xs text-white"
+                      >
+                        <option value="Quantitative">Quantitative Reasoning</option>
+                        <option value="Logical">Logical Deduction</option>
+                        <option value="Probability">Probability & Statistics</option>
+                        <option value="Algebra">Algebraic Formulas</option>
+                      </select>
+                      <button
                         onClick={handleGenerateAptitude}
-                        disabled={isPending}
-                        className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-1.5 px-4 h-8.5 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)] rounded-xl"
+                        className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-black text-xs font-extrabold rounded-xl hover:opacity-90 transition-all cursor-pointer shadow-md"
                       >
-                        {isPending ? (
-                          <span className="flex items-center gap-1.5">
-                            <Loader2 size={13} className="animate-spin text-black" />
-                            <span>Generating...</span>
-                          </span>
-                        ) : (
-                          'Request Quiz'
-                        )}
-                      </Button>
+                        Generate Quiz
+                      </button>
                     </div>
                   </div>
 
-                  {aptitudeQuestions.length > 0 ? (
-                    <div className="flex flex-col gap-4 mt-2">
-                      {aptitudeQuestions.map((q, idx) => {
-                        const selectedAnswer = aptitudeAnswers[idx]
-                        const isCorrect = selectedAnswer === q.correctIndex
-                        
-                        return (
-                          <div
-                            key={idx}
-                            className="p-4 bg-black/20 border border-white/5 rounded-xl flex flex-col gap-3"
-                          >
-                            <span className="text-[10px] font-bold text-[var(--accent-purple)] uppercase tracking-wider">Question {idx + 1}</span>
-                            <p className="text-xs font-bold text-[var(--text-primary)] leading-normal">{q.question}</p>
-
-                            <div className="flex flex-col gap-2">
-                              {q.options.map((opt, optIdx) => {
-                                const isSelected = selectedAnswer === optIdx
-                                const isThisCorrect = optIdx === q.correctIndex
-                                
-                                return (
-                                  <div
-                                    key={optIdx}
-                                    onClick={() => {
-                                      if (showAptitudeResults) return
-                                      setAptitudeAnswers(prev => ({ ...prev, [idx]: optIdx }))
-                                    }}
-                                    className={`p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-colors ${
-                                      showAptitudeResults
-                                        ? isThisCorrect
-                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold'
-                                          : isSelected
-                                          ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                                          : 'border-white/5 text-[var(--text-secondary)] font-medium'
-                                        : isSelected
-                                        ? 'border-[var(--accent-blue)] bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] font-bold'
-                                        : 'border-white/5 bg-black/10 hover:bg-white/[0.01] text-[var(--text-secondary)] font-medium'
-                                    }`}
-                                  >
-                                    {opt}
-                                  </div>
-                                )
-                              })}
-                            </div>
-
-                            {showAptitudeResults && (
-                              <div className={`text-[10px] mt-1 p-3 rounded-lg leading-relaxed border ${
-                                isCorrect ? 'bg-emerald-950/10 border-emerald-500/10 text-emerald-500/90 font-medium' : 'bg-red-950/10 border-red-500/10 text-red-400 font-medium'
-                              }`}>
-                                <strong className="font-extrabold block mb-0.5">{isCorrect ? 'Correct!' : 'Incorrect'}</strong>
-                                {q.explanation}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-
-                      {!showAptitudeResults ? (
-                        <Button
-                          onClick={submitAptitudeAnswers}
-                          className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-2.5 shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer h-10 mt-2 rounded-xl"
-                        >
-                          Submit Quiz Answers
-                        </Button>
-                      ) : (
-                        <div className="flex gap-3 mt-2 select-none">
-                          <Button
-                            onClick={() => {
-                              setAptitudeAnswers({})
-                              setShowAptitudeResults(false)
-                            }}
-                            variant="outline"
-                            className="flex-1 border-[var(--border-glass)] hover:border-white/10 text-xs py-2 h-9 cursor-pointer rounded-xl font-bold"
-                          >
-                            Retry Quiz
-                          </Button>
-                          <Button
-                            onClick={handleGenerateAptitude}
-                            disabled={isPending}
-                            className="flex-1 bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs border-0 cursor-pointer h-9 rounded-xl font-bold"
-                          >
-                            Generate New Quiz
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-12 gap-3 select-none">
-                      <Brain size={32} className="text-[var(--text-muted)] animate-pulse" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">
-                        No active aptitude questions loaded. Select a topic and request questions from the examiner.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 2: DSA CODING INTERVIEW */}
-              {activeModule === 'dsa' && (
-                <div className="flex flex-col gap-4 select-text">
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 select-none">
-                    <div className="flex flex-col gap-0.5">
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Technical Coding Problems</h3>
-                      <p className="text-[10px] text-[var(--text-muted)]">Solve algorithm milestones and review execution boilerplates.</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <select
-                          value={dsaTopic}
-                          onChange={(e) => setDsaTopic(e.target.value)}
-                          className="bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-xl px-3 py-1.5 pr-8 text-[var(--text-primary)] outline-none cursor-pointer appearance-none font-bold"
-                        >
-                          <option value="Arrays">Arrays & Hashing</option>
-                          <option value="Strings">String Manipulation</option>
-                          <option value="Linked Lists">Linked Lists</option>
-                          <option value="Trees">Trees & Graphs</option>
-                          <option value="Dynamic Programming">Dynamic Programming</option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-2.5 text-[var(--text-muted)] pointer-events-none" size={12} />
+                  <AnimatePresence mode="wait">
+                    {isPending && aptitudeQuestions.length === 0 ? (
+                      <div className="py-12 flex flex-col items-center justify-center gap-2 select-none">
+                        <Loader2 size={24} className="animate-spin text-cyan-400" />
+                        <span className="text-[10px] text-[var(--text-secondary)] font-semibold">Tethering Aptitude Core...</span>
                       </div>
-
-                      <Button
-                        onClick={handleGenerateDsa}
-                        disabled={isPending}
-                        className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-1.5 px-4 h-8.5 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)] rounded-xl"
-                      >
-                        {isPending ? (
-                          <span className="flex items-center gap-1.5">
-                            <Loader2 size={13} className="animate-spin text-black" />
-                            <span>Compiling...</span>
-                          </span>
-                        ) : (
-                          'Request Problems'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {dsaProblems.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5 items-start mt-2">
-                      
-                      {/* Left list of problems */}
-                      <div className="md:col-span-1 flex flex-col gap-2.5 select-none">
-                        {dsaProblems.map((prob, idx) => {
-                          const isSelected = selectedProblemIndex === idx
-                          const isSolved = completedDsaCount[prob.title] ?? false
-                          
-                          return (
-                            <div
-                              key={idx}
-                              onClick={() => {
-                                setSelectedProblemIndex(idx)
-                                setDsaViewMode('editor')
-                                setUserCodeBoilerplate(prob.boilerplate)
-                              }}
-                              className={`p-3 bg-black/25 hover:bg-white/[0.02] border rounded-xl cursor-pointer flex flex-col gap-1.5 transition-colors ${
-                                isSelected ? 'border-[var(--accent-blue)] bg-white/[0.01]' : 'border-white/5'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between gap-1 leading-none">
-                                <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[100px]">{prob.title}</span>
-                                <span className={`text-[8px] font-bold ${
-                                  prob.difficulty === 'Easy' ? 'text-emerald-400' : prob.difficulty === 'Medium' ? 'text-amber-400' : 'text-red-400'
-                                }`}>
-                                  {prob.difficulty}
-                                </span>
-                              </div>
-                              
-                              <div className="flex items-center justify-between text-[9px] text-[var(--text-muted)] mt-1.5">
-                                <span className="font-semibold">JavaScript</span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    toggleDsaSolved(prob.title)
-                                  }}
-                                  className={`px-2 py-0.5 rounded text-[8px] font-bold border transition-colors ${
-                                    isSolved 
-                                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                                      : 'border-white/10 hover:border-white/20 text-[var(--text-muted)] hover:text-white cursor-pointer'
-                                  }`}
-                                >
-                                  {isSolved ? 'Solved' : 'Mark Solved'}
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      {/* Right coding workspace editor */}
-                      <div className="md:col-span-3">
-                        {selectedProblemIndex !== null ? (
-                          <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
-                              <h4 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-                                <Terminal size={14} className="text-[var(--accent-blue)]" />
-                                {dsaProblems[selectedProblemIndex].title}
-                              </h4>
-                              
-                              <div className="flex items-center bg-white/5 border border-[var(--border-glass)] rounded-lg p-0.5">
-                                <button
-                                  onClick={() => setDsaViewMode('editor')}
-                                  className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
-                                    dsaViewMode === 'editor' ? 'bg-white/10 text-[var(--accent-blue)]' : 'text-[var(--text-secondary)]'
-                                  }`}
-                                >
-                                  Code
-                                </button>
-                                <button
-                                  onClick={() => setDsaViewMode('solution')}
-                                  className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all cursor-pointer ${
-                                    dsaViewMode === 'solution' ? 'bg-white/10 text-[var(--accent-blue)]' : 'text-[var(--text-secondary)]'
-                                  }`}
-                                >
-                                  Solution
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                              {/* Left specs detail box */}
-                              <div className="p-4 bg-black/15 border border-[var(--border-glass)] rounded-xl flex flex-col gap-3 min-h-[30vh] max-h-[44vh] overflow-y-auto custom-scrollbar">
-                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider select-none">Problem Description</span>
-                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-semibold">
-                                  {dsaProblems[selectedProblemIndex].description}
-                                </p>
-                                
-                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-1.5 select-none">Examples</span>
-                                <pre className="p-3 bg-black/40 rounded-lg border border-white/5 text-[10px] font-mono text-cyan-400 whitespace-pre-wrap leading-relaxed">
-                                  {dsaProblems[selectedProblemIndex].inputOutput}
-                                </pre>
-                              </div>
-
-                              {/* Right workspace terminal code box */}
-                              {dsaViewMode === 'editor' ? (
-                                <div className="rounded-xl border border-white/5 bg-[#090a0f] overflow-hidden flex flex-col font-mono text-[10px] text-[var(--text-secondary)] shadow-2xl">
-                                  <div className="flex items-center justify-between px-3 py-1.5 bg-black/40 border-b border-white/5 select-none">
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-                                      <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-                                    </div>
-                                    <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold">solution.js</span>
+                    ) : (
+                      aptitudeQuestions.length > 0 && (
+                        <div className="space-y-4">
+                          {aptitudeQuestions.map((q, idx) => (
+                            <div key={idx} className="p-4 bg-black/25 border border-[var(--border-glass)] rounded-2xl space-y-3">
+                              <h4 className="text-xs font-extrabold text-white leading-relaxed">{idx + 1}. {q.question}</h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 select-none">
+                                {q.options.map((opt, optIdx) => {
+                                  const isSelected = aptitudeAnswers[idx] === optIdx
+                                  const isCorrect = q.correctIndex === optIdx
+                                  return (
                                     <button
-                                      onClick={() => setUserCodeBoilerplate(dsaProblems[selectedProblemIndex].boilerplate)}
-                                      className="text-[8px] text-[var(--text-muted)] hover:text-white flex items-center gap-0.5 border border-white/5 px-1.5 py-0.5 rounded cursor-pointer font-bold"
+                                      key={optIdx}
+                                      onClick={() => !showAptitudeResults && setAptitudeAnswers(prev => ({ ...prev, [idx]: optIdx }))}
+                                      className={cn(
+                                        "w-full text-left px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border",
+                                        isSelected ? "bg-[var(--accent-blue)] text-black border-transparent font-semibold shadow-inner" : "bg-black/30 text-[var(--text-secondary)] hover:text-white border-[var(--border-glass)]",
+                                        showAptitudeResults && isCorrect && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+                                        showAptitudeResults && isSelected && !isCorrect && "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                      )}
                                     >
-                                      <RotateCcw size={8} />
-                                      Reset
+                                      {opt}
                                     </button>
-                                  </div>
-
-                                  <div className="flex-1 flex min-h-[26vh] max-h-[36vh]">
-                                    {/* Line numbers column */}
-                                    <div className="w-8 py-3 bg-black/25 text-[9px] font-mono text-white/20 text-center select-none border-r border-white/5 leading-relaxed">
-                                      {Array.from({ length: 12 }).map((_, i) => (
-                                        <div key={i}>{i + 1}</div>
-                                      ))}
-                                    </div>
-                                    
-                                    <textarea
-                                      value={userCodeBoilerplate}
-                                      onChange={(e) => setUserCodeBoilerplate(e.target.value)}
-                                      className="flex-1 p-3 bg-transparent border-0 outline-none resize-none font-mono text-[10px] leading-relaxed text-emerald-400/90 custom-scrollbar"
-                                      placeholder="// Start writing coding solution..."
-                                    />
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="p-4 bg-[#090a0f] border border-[var(--border-glass)] rounded-xl flex flex-col gap-2.5 min-h-[30vh] max-h-[44vh] overflow-y-auto custom-scrollbar">
-                                  <span className="text-[10px] font-bold text-[var(--accent-blue)] uppercase tracking-wider">Walkthrough Guide</span>
-                                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap font-medium">
-                                    {dsaProblems[selectedProblemIndex].approach}
-                                  </p>
-                                </div>
+                                  )
+                                })}
+                              </div>
+                              {showAptitudeResults && (
+                                <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed italic border-t border-white/5 pt-2">
+                                  {q.explanation}
+                                </p>
                               )}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/5 rounded-xl text-xs text-[var(--text-muted)] select-none">
-                            Select a problem from the list to launch coding terminal workspace.
-                          </div>
-                        )}
-                      </div>
+                          ))}
 
+                          <div className="flex justify-end pt-2 select-none">
+                            {!showAptitudeResults ? (
+                              <button
+                                onClick={submitAptitudeAnswers}
+                                className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-indigo-600 text-black text-xs font-extrabold rounded-xl shadow-md transition-all active:scale-97 cursor-pointer"
+                              >
+                                Submit Answers
+                              </button>
+                            ) : (
+                              <button
+                                onClick={handleGenerateAptitude}
+                                className="px-6 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-extrabold cursor-pointer"
+                              >
+                                Restart Test
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* TAB 2: DSA CODING EDITOR (LEETCODE STYLE IDE) */}
+              {activeModule === 'dsa' && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 select-none">
+                    <div className="flex flex-col gap-0.5">
+                      <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">DSA Algorithm Sandbox</h3>
+                      <p className="text-[10px] text-[var(--text-secondary)]">Leetcode style development console.</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={dsaTopic}
+                        onChange={(e) => setDsaTopic(e.target.value)}
+                        className="bg-[#16171E] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-xs text-white"
+                      >
+                        <option value="Arrays">Arrays & Hashing</option>
+                        <option value="Trees">Binary Trees</option>
+                        <option value="Greedy">Greedy Algorithms</option>
+                        <option value="Graphs">Graphs DFS/BFS</option>
+                      </select>
+                      <button
+                        onClick={handleGenerateDsa}
+                        className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-black text-xs font-extrabold rounded-xl hover:opacity-90 transition-all cursor-pointer shadow-md"
+                      >
+                        Generate problems
+                      </button>
+                    </div>
+                  </div>
+
+                  {isPending && dsaProblems.length === 0 ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-2 select-none">
+                      <Loader2 size={24} className="animate-spin text-cyan-400" />
+                      <span className="text-[10px] text-[var(--text-secondary)] font-semibold">Generating DSA Challenges...</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-12 gap-3 select-none">
-                      <Code2 size={32} className="text-[var(--text-muted)] animate-pulse" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">
-                        No coding problems loaded. Select a DSA topic and request interview coding problems.
-                      </span>
-                    </div>
+                    dsaProblems.length > 0 && selectedProblemIndex !== null && (
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                        
+                        {/* Left: Problem Descriptions (col-span-5) */}
+                        <div className="lg:col-span-5 flex flex-col gap-3 h-[420px] overflow-y-auto custom-scrollbar select-text pr-1.5">
+                          
+                          {/* Selector tabs */}
+                          <div className="flex gap-2 border-b border-[var(--border-glass)] pb-2 select-none">
+                            {dsaProblems.map((p, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  setSelectedProblemIndex(idx)
+                                  setUserCodeBoilerplate(p.boilerplate)
+                                }}
+                                className={cn(
+                                  "px-2.5 py-1 text-[10px] font-bold rounded-lg transition-colors border",
+                                  selectedProblemIndex === idx ? "bg-[var(--accent-blue-glow)] text-[var(--accent-blue)] border-[var(--accent-blue)]/20" : "border-transparent text-[var(--text-secondary)] hover:text-white"
+                                )}
+                              >
+                                {p.title}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="space-y-4 pt-2">
+                            <div className="flex items-center gap-2 select-none">
+                              <h4 className="text-sm font-extrabold text-white font-heading">{dsaProblems[selectedProblemIndex].title}</h4>
+                              <span className={cn(
+                                "text-[8px] font-mono px-2 py-0.5 rounded font-bold uppercase",
+                                dsaProblems[selectedProblemIndex].difficulty.toLowerCase() === 'easy' ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                              )}>
+                                {dsaProblems[selectedProblemIndex].difficulty}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap bg-black/20 p-3 rounded-xl border border-white/5">
+                              {dsaProblems[selectedProblemIndex].description}
+                            </p>
+
+                            <div className="space-y-1.5 bg-black/40 p-3 rounded-xl border border-white/5">
+                              <span className="text-[9px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider block font-mono select-none">Test Cases</span>
+                              <pre className="text-[10px] text-cyan-400 font-mono leading-relaxed whitespace-pre-wrap">{dsaProblems[selectedProblemIndex].inputOutput}</pre>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Code editor sandbox (col-span-7) */}
+                        <div className="lg:col-span-7 flex flex-col gap-3 h-[420px]">
+                          <div className="flex justify-between items-center select-none bg-black/40 border border-white/5 px-3 py-2 rounded-xl">
+                            <span className="text-[9px] font-bold text-slate-400 font-mono flex items-center gap-1.5">
+                              <TermIcon size={12} className="text-cyan-400" /> index.js // javascript
+                            </span>
+                            
+                            <div className="flex gap-2">
+                              <button
+                                onClick={executeRunCode}
+                                disabled={isCompiling}
+                                className="px-3.5 py-1 bg-[var(--accent-blue)] text-black text-[10px] font-extrabold rounded-lg hover:opacity-90 flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+                              >
+                                {isCompiling ? <Loader2 size={11} className="animate-spin text-black" /> : <PlayCircle size={11} />}
+                                <span>Run Code</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex-1 border border-white/5 bg-[#07080b]/90 rounded-2xl p-4 flex gap-3.5">
+                            {/* Line numbers block */}
+                            <div className="font-mono text-[10.5px] text-[var(--text-muted)] text-right select-none pr-2 border-r border-white/5 space-y-1 leading-normal">
+                              {Array.from({ length: 15 }).map((_, i) => (
+                                <div key={i}>{i + 1}</div>
+                              ))}
+                            </div>
+
+                            {/* Text editor input */}
+                            <textarea
+                              value={userCodeBoilerplate}
+                              onChange={(e) => setUserCodeBoilerplate(e.target.value)}
+                              className="w-full h-full bg-transparent border-none text-[10.5px] text-slate-300 font-mono outline-none resize-none leading-normal select-text pr-2 custom-scrollbar focus:ring-0 focus:border-none p-0"
+                            />
+                          </div>
+
+                          {/* Compiler Result drawer */}
+                          {compilerOutput && (
+                            <div className="p-3 bg-black/40 border border-emerald-500/20 text-emerald-400 rounded-xl font-mono text-[9px] leading-relaxed whitespace-pre shadow-inner">
+                              {compilerOutput}
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                    )
                   )}
                 </div>
               )}
 
-              {/* TAB 3: HR BEHAVIORAL QUESTIONS */}
+              {/* TAB 3: HR QUESTIONS (STAR METHOD ACCORDIONS) */}
               {activeModule === 'hr' && (
                 <div className="flex flex-col gap-4 select-text">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 select-none">
                     <div className="flex flex-col gap-0.5">
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Behavioral Interview Questions</h3>
-                      <p className="text-[10px] text-[var(--text-muted)]">Practice STAR method formulas (Situation, Task, Action, Result) for HR reviews.</p>
+                      <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">HR STAR Behavioral Library</h3>
+                      <p className="text-[10px] text-[var(--text-secondary)]">Study structured response outlines mapped to the STAR format.</p>
                     </div>
 
-                    <Button
+                    <button
                       onClick={handleGenerateHrQuestions}
-                      disabled={isPending}
-                      className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black text-xs font-bold py-1.5 px-4 h-8.5 border-0 cursor-pointer shadow-lg shadow-[var(--accent-blue-glow)] self-start sm:self-center rounded-xl"
+                      className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-black text-xs font-extrabold rounded-xl hover:opacity-90 transition-all cursor-pointer shadow-md"
                     >
-                      {isPending ? (
-                        <span className="flex items-center gap-1.5">
-                          <Loader2 size={13} className="animate-spin text-black" />
-                          <span>Formulating...</span>
-                        </span>
-                      ) : (
-                        'Request Questions'
-                      )}
-                    </Button>
+                      Generate Questions
+                    </button>
                   </div>
 
-                  {hrQuestions.length > 0 ? (
-                    <div className="flex flex-col gap-3.5 mt-2">
-                      {hrQuestions.map((hr, idx) => {
-                        const isExpanded = expandedStarQuestionIndex === idx
-                        
-                        return (
-                          <div
-                            key={idx}
-                            className="border border-white/5 bg-black/10 rounded-xl overflow-hidden transition-colors"
-                          >
-                            <div
-                              onClick={() => setExpandedStarQuestionIndex(isExpanded ? null : idx)}
-                              className="flex items-center justify-between p-3.5 bg-white/[0.01] hover:bg-white/[0.03] cursor-pointer transition-colors select-none"
-                            >
-                              <div className="flex items-center gap-3 pr-2 min-w-0">
-                                <span className="w-5 h-5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[10px] font-bold text-[var(--accent-blue)] shrink-0">
-                                  {idx + 1}
-                                </span>
-                                <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[480px]">
-                                  {hr.question}
-                                </span>
-                              </div>
-                              <div>
-                                {isExpanded ? <ChevronUp size={14} className="text-[var(--text-muted)]" /> : <ChevronDown size={14} className="text-[var(--text-muted)]" />}
-                              </div>
-                            </div>
-
-                            <AnimatePresence>
-                              {isExpanded && (
-                                <motion.div
-                                  initial={{ height: 0 }}
-                                  animate={{ height: 'auto' }}
-                                  exit={{ height: 0 }}
-                                  className="overflow-hidden bg-black/5 border-t border-white/5"
+                  <AnimatePresence mode="wait">
+                    {isPending && hrQuestions.length === 0 ? (
+                      <div className="py-12 flex flex-col items-center justify-center gap-2 select-none">
+                        <Loader2 size={24} className="animate-spin text-cyan-400" />
+                        <span className="text-[10px] text-[var(--text-secondary)] font-semibold">Tethering STAR outlines...</span>
+                      </div>
+                    ) : (
+                      hrQuestions.length > 0 && (
+                        <div className="space-y-3.5 max-h-[440px] overflow-y-auto pr-1 custom-scrollbar">
+                          {hrQuestions.map((q, idx) => {
+                            const isOpen = expandedStarQuestionIndex === idx
+                            return (
+                              <div key={idx} className="border border-white/5 bg-black/10 rounded-2xl overflow-hidden text-xs">
+                                <button
+                                  onClick={() => setExpandedStarQuestionIndex(isOpen ? null : idx)}
+                                  className="w-full text-left p-4 flex items-center justify-between gap-3 hover:bg-white/[0.01] transition-colors cursor-pointer"
                                 >
-                                  <div className="p-4 flex flex-col gap-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="flex flex-col gap-3.5">
-                                        <span className="text-[9px] font-extrabold text-[var(--accent-blue)] uppercase tracking-widest select-none">STAR Formulation</span>
-                                        
-                                        <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Situation</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.situation}</p>
-                                        </div>
-                                        <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Task</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.task}</p>
-                                        </div>
-                                        <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Action</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.action}</p>
-                                        </div>
-                                        <div className="flex flex-col gap-1 text-xs">
-                                          <strong className="text-[10px] text-[var(--text-primary)] uppercase select-none">Result</strong>
-                                          <p className="text-[var(--text-secondary)] leading-relaxed pl-2.5 border-l-2 border-[var(--accent-blue)]/30 font-medium">{hr.starModel.result}</p>
-                                        </div>
-                                      </div>
+                                  <span className="text-xs font-extrabold text-white leading-normal pr-1 font-heading">
+                                    {idx + 1}. {q.question}
+                                  </span>
+                                  {isOpen ? <ChevronUp size={14} className="text-cyan-400 shrink-0" /> : <ChevronDown size={14} className="text-[var(--text-muted)] shrink-0" />}
+                                </button>
 
-                                      <div className="flex flex-col gap-2.5 p-4 bg-white/[0.01] border border-white/5 rounded-xl">
-                                        <span className="text-[9px] font-extrabold text-[var(--accent-purple)] uppercase tracking-widest select-none">Recruiter Tips & Outlines</span>
-                                        <p className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed font-semibold">
-                                          {hr.idealOutline}
-                                        </p>
+                                {isOpen && (
+                                  <div className="p-4 bg-black/35 border-t border-white/5 space-y-4">
+                                    {/* STAR Breakdowns */}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                      <div className="p-3 bg-red-500/[0.02] border border-red-500/10 rounded-xl space-y-1">
+                                        <span className="text-[8px] font-extrabold font-mono text-red-400 uppercase tracking-widest">SITUATION</span>
+                                        <p className="text-[10px] text-slate-300 leading-relaxed">{q.starModel.situation}</p>
+                                      </div>
+                                      <div className="p-3 bg-blue-500/[0.02] border border-blue-500/10 rounded-xl space-y-1">
+                                        <span className="text-[8px] font-extrabold font-mono text-blue-400 uppercase tracking-widest">TASK</span>
+                                        <p className="text-[10px] text-slate-300 leading-relaxed">{q.starModel.task}</p>
+                                      </div>
+                                      <div className="p-3 bg-amber-500/[0.02] border border-amber-500/10 rounded-xl space-y-1">
+                                        <span className="text-[8px] font-extrabold font-mono text-amber-400 uppercase tracking-widest">ACTION</span>
+                                        <p className="text-[10px] text-slate-300 leading-relaxed">{q.starModel.action}</p>
+                                      </div>
+                                      <div className="p-3 bg-emerald-500/[0.02] border border-emerald-500/10 rounded-xl space-y-1">
+                                        <span className="text-[8px] font-extrabold font-mono text-emerald-400 uppercase tracking-widest">RESULT</span>
+                                        <p className="text-[10px] text-slate-300 leading-relaxed">{q.starModel.result}</p>
                                       </div>
                                     </div>
+
+                                    {/* Ideal Outline text */}
+                                    <div className="p-3 bg-black/40 border border-white/5 rounded-xl text-[10px] leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
+                                      {q.idealOutline}
+                                    </div>
                                   </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-12 gap-3 select-none">
-                      <FileText size={32} className="text-[var(--text-muted)] animate-pulse" />
-                      <span className="text-xs text-[var(--text-muted)] max-w-xs font-medium">
-                        No HR behavioral questions loaded. Request mock behavior questions from the recruitment database.
-                      </span>
-                    </div>
-                  )}
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 
-              {/* TAB 4: AI RECRUITER INTERVIEW SIMULATOR */}
+              {/* TAB 4: AI RECRUITER SIMULATOR (INTERVIEWING.IO MOCK CALL HUD) */}
               {activeModule === 'simulator' && (
-                <div className="flex flex-col gap-4">
-                  {simulatorStatus === 'idle' && (
-                    <div className="flex flex-col items-center justify-center text-center py-10 gap-5 max-w-md mx-auto select-none">
-                      <Award size={36} className="text-[var(--accent-blue)] animate-pulse" />
+                <div className="flex flex-col gap-5 select-none">
+                  {simulatorStatus === 'idle' ? (
+                    <div className="max-w-md mx-auto text-center space-y-4 py-8 select-none">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[var(--accent-blue)]/10 to-[var(--accent-purple)]/10 text-[var(--accent-blue)] border border-cyan-500/20 flex items-center justify-center mx-auto shadow-[0_0_20px_var(--accent-blue-glow)]">
+                        <Sparkles size={24} />
+                      </div>
                       
-                      <div className="flex flex-col gap-1.5">
-                        <h3 className="text-sm font-bold text-[var(--text-primary)]">AI Mock Interview Simulator</h3>
-                        <p className="text-xs text-[var(--text-muted)] leading-relaxed font-medium">
-                          Test your answers in real-time. Pick your career role, start simulation, and get graded feedback scores.
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-extrabold text-white uppercase tracking-wider font-heading">Mock Interview Simulator</h3>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                          Test communication performance and response scoring under a simulated engineering recruitment call loop.
                         </p>
                       </div>
 
-                      <div className="flex flex-col gap-2 w-full text-left">
-                        <label htmlFor="simulatorRole" className="text-xs font-bold text-[var(--text-primary)]">Target Placement Job Role</label>
-                        <div className="relative">
-                          <select
-                            id="simulatorRole"
-                            value={jobRole}
-                            onChange={(e) => setJobRole(e.target.value)}
-                            className="w-full bg-black/45 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] text-xs rounded-xl px-3.5 py-2.5 text-[var(--text-primary)] outline-none cursor-pointer appearance-none font-bold"
-                          >
-                            <option value="Software Engineer">Software Engineer (General)</option>
-                            <option value="Frontend Engineer">Frontend Engineer</option>
-                            <option value="Backend Developer">Backend Developer</option>
-                            <option value="Product Manager">Product Manager</option>
-                            <option value="Data Analyst">Data Analyst</option>
-                            <option value="Consultant">Management Consultant</option>
-                          </select>
-                          <ChevronDown className="absolute right-3.5 top-3.5 text-[var(--text-muted)] pointer-events-none" size={13} />
-                        </div>
+                      <div className="flex gap-2 justify-center items-center pt-2">
+                        <select
+                          value={jobRole}
+                          onChange={(e) => setJobRole(e.target.value)}
+                          className="bg-[#16171E] border border-[var(--border-glass)] rounded-xl px-4 py-2.5 text-xs text-white"
+                        >
+                          <option value="Software Engineer">Software Engineer (SWE)</option>
+                          <option value="Frontend Engineer">Frontend Specialist</option>
+                          <option value="Backend Engineer">System Architect</option>
+                          <option value="Data Scientist">Data Scientist / ML Engineer</option>
+                        </select>
+                        <button
+                          onClick={handleStartInterview}
+                          className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-indigo-600 text-black text-xs font-extrabold rounded-xl hover:opacity-95 shadow-md active:scale-97 transition-all cursor-pointer"
+                        >
+                          Join Simulator Call
+                        </button>
                       </div>
-
-                      <Button
-                        onClick={handleStartInterview}
-                        disabled={isPending}
-                        className="w-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black hover:opacity-95 text-xs font-bold py-3 shadow-lg shadow-[var(--accent-blue-glow)] border-0 cursor-pointer rounded-xl"
-                      >
-                        {isPending ? (
-                          <span className="flex items-center gap-1.5 justify-center">
-                            <Loader2 size={13} className="animate-spin text-black" />
-                            <span>Establishing Connection...</span>
-                          </span>
-                        ) : (
-                          'Launch Simulator'
-                        )}
-                      </Button>
                     </div>
-                  )}
-
-                  {simulatorStatus === 'interviewing' && (
-                    <div className="flex flex-col gap-5">
-                      
-                      {/* INTERACTIVE VIDEO CALL MOCK FRAMES */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Interviewer Frame */}
-                        <div className="relative rounded-xl border border-white/5 bg-[#171821] overflow-hidden aspect-video flex flex-col justify-between p-3 select-none">
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-16 h-16 rounded-full bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/30 flex items-center justify-center text-[var(--accent-purple)] animate-pulse">
-                              <Sparkles size={28} />
-                            </div>
-                          </div>
-                          
-                          <div className="relative z-10 self-start bg-black/60 px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase tracking-wider">
-                            Interviewer (Stripe Bot)
-                          </div>
-                          
-                          <div className="relative z-10 self-end flex items-center gap-1 bg-black/60 px-2 py-0.5 rounded text-[8px] font-semibold text-emerald-400">
-                            <Volume2 size={10} className="animate-bounce" /> Live Audio Connected
-                          </div>
-                        </div>
-
-                        {/* Candidate Frame (You) */}
-                        <div className="relative rounded-xl border border-white/5 bg-[#171821] overflow-hidden aspect-video flex flex-col justify-between p-3 select-none">
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                            {isVideoOn ? (
-                              <div className="w-16 h-16 rounded-full bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/30 flex items-center justify-center text-[var(--accent-blue)]">
-                                <User size={28} className="animate-pulse" />
-                              </div>
-                            ) : (
-                              <VideoOff size={28} className="text-white/20" />
-                            )}
-                          </div>
-                          
-                          <div className="relative z-10 self-start bg-black/60 px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase tracking-wider">
-                            Student (You)
-                          </div>
-
-                          {/* Control tabs */}
-                          <div className="relative z-10 self-center flex items-center gap-2 bg-black/60 p-1 rounded-lg">
-                            <button
-                              onClick={() => setIsVideoOn(!isVideoOn)}
-                              className={`p-1.5 rounded-md cursor-pointer transition-all ${isVideoOn ? 'bg-white/10 text-white' : 'bg-red-500/20 text-red-400'}`}
-                            >
-                              {isVideoOn ? <Video size={12} /> : <VideoOff size={12} />}
-                            </button>
-                            <button
-                              onClick={() => setIsMicOn(!isMicOn)}
-                              className={`p-1.5 rounded-md cursor-pointer transition-all ${isMicOn ? 'bg-white/10 text-white' : 'bg-red-500/20 text-red-400'}`}
-                            >
-                              {isMicOn ? <Mic size={12} /> : <MicOff size={12} />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
-                        <span className="text-[9px] bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                          Sim Active
+                  ) : simulatorStatus === 'completed' && simulationResult ? (
+                    // Simulator score report card
+                    <div className="max-w-2xl mx-auto space-y-5 py-2">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Simulation Report</span>
+                        <span className="text-[8px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded font-mono font-bold tracking-widest">
+                          COMPILED_OK
                         </span>
-
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={handleFinishInterview}
-                          disabled={isPending || dialogHistory.length < 4}
-                          className="border-[var(--border-glass)] text-[10px] font-bold cursor-pointer text-amber-400 hover:border-amber-400/20 rounded-lg"
-                        >
-                          {isPending ? <Loader2 size={10} className="animate-spin" /> : 'Finish & Grade Interview'}
-                        </Button>
                       </div>
 
-                      <div className="bg-black/25 border border-[var(--border-glass)] rounded-xl p-4 flex flex-col gap-4 min-h-[35vh] max-h-[46vh] overflow-y-auto custom-scrollbar select-text">
-                        {dialogHistory.map((chat, idx) => (
-                          <div key={idx} className="flex flex-col gap-2">
-                            <div
-                              className={`flex flex-col gap-1 text-[11px] max-w-[85%] leading-relaxed ${
-                                chat.role === 'candidate'
-                                  ? 'self-end bg-[var(--accent-blue-glow)] border border-[var(--accent-blue)]/20 p-3 rounded-xl rounded-tr-none text-[var(--text-primary)] font-semibold'
-                                  : 'self-start bg-white/5 border border-white/5 p-3 rounded-xl rounded-tl-none text-[var(--text-secondary)] font-medium'
-                              }`}
-                            >
-                              <span className="text-[8px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-0.5">
-                                {chat.role === 'candidate' ? 'Candidate (You)' : 'AI Interviewer'}
-                              </span>
-                              <p>{chat.content}</p>
-                            </div>
-
-                            {chat.role === 'interviewer' && chat.feedback && (
-                              <div className="self-start p-2.5 bg-amber-400/5 border border-amber-400/10 rounded-lg text-[9px] text-amber-400 max-w-[80%] leading-relaxed mt-1 flex flex-col gap-1 select-text font-semibold">
-                                <span className="font-extrabold flex items-center gap-1 text-[8px] uppercase tracking-widest">
-                                  <Sparkles size={9} />
-                                  Feedback (Grade: {chat.score}/100)
-                                </span>
-                                <p>{chat.feedback}</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {isPending && (
-                          <div className="self-start bg-white/5 border border-white/5 p-2 rounded-xl rounded-tl-none text-[9px] text-[var(--text-muted)] select-none">
-                            Recruiter is evaluating response...
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 select-none">
-                        <input
-                          type="text"
-                          placeholder="Type your response and hit Send..."
-                          value={candidateResponse}
-                          onChange={(e) => setCandidateResponse(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSendResponse()}
-                          disabled={isPending}
-                          className="flex-1 bg-black/35 border border-[var(--border-glass)] focus:border-[var(--accent-blue)] rounded-xl px-4 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none transition-all font-semibold"
-                        />
-                        <Button
-                          onClick={handleSendResponse}
-                          disabled={isPending || !candidateResponse.trim()}
-                          className="bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] text-black hover:opacity-95 text-xs font-bold px-4 py-2.5 h-9 border-0 cursor-pointer flex items-center justify-center gap-1.5 rounded-xl"
-                        >
-                          <Send size={12} />
-                          Send
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {simulatorStatus === 'completed' && simulationResult && (
-                    <div className="flex flex-col gap-5 select-text">
-                      <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-2 select-none">
-                        <span className="text-xs font-bold text-[var(--text-primary)]">Mock Interview Evaluation report</span>
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => setSimulatorStatus('idle')}
-                          className="border-[var(--border-glass)] text-[10px] font-bold cursor-pointer rounded-lg"
-                        >
-                          New Session
-                        </Button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div className="md:col-span-1 flex flex-col gap-4 p-4 bg-white/[0.01] border border-white/5 rounded-xl items-center justify-center select-none">
-                          <span className="text-[10px] font-extrabold text-[var(--text-muted)] uppercase tracking-widest text-center">Sim Performance</span>
-                          
-                          <div className="relative w-28 h-28 shrink-0">
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-stretch">
+                        {/* Score Circle (sm:col-span-4) */}
+                        <div className="sm:col-span-4 flex flex-col items-center justify-center bg-black/25 border border-white/5 p-4 rounded-2xl">
+                          <div className="relative w-24 h-24 shrink-0">
                             <svg className="w-full h-full transform -rotate-90">
-                              <circle cx="56" cy="56" r="48" className="stroke-white/5 fill-transparent" strokeWidth="8" />
-                              <circle cx="56" cy="56" r="48" className="fill-transparent stroke-[var(--accent-purple)] transition-all duration-500" strokeWidth="8"
-                                strokeDasharray={2 * Math.PI * 48}
-                                strokeDashoffset={(2 * Math.PI * 48) * (1 - simulationResult.overallScore / 100)}
+                              <circle cx="48" cy="48" r="40" className="stroke-white/5 fill-transparent" strokeWidth="6" />
+                              <circle cx="48" cy="48" r="40" className="fill-transparent stroke-[var(--accent-blue)]" strokeWidth="6"
+                                strokeDasharray={2 * Math.PI * 40}
+                                strokeDashoffset={(2 * Math.PI * 40) * (1 - simulationResult.overallScore / 100)}
                                 strokeLinecap="round"
                               />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                              <span className="text-2xl font-bold text-[var(--text-primary)] leading-none">{simulationResult.overallScore}%</span>
-                              <span className="text-[7px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Recruit score</span>
+                              <span className="text-xl font-extrabold text-white leading-none">{simulationResult.overallScore}</span>
+                              <span className="text-[7px] text-[var(--text-muted)] font-mono uppercase tracking-wider mt-1">PLACEMENT SCORE</span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="md:col-span-2 flex flex-col gap-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/10 rounded-xl flex flex-col gap-2 text-xs font-semibold">
-                              <span className="text-[9px] font-extrabold text-emerald-400 uppercase tracking-widest flex items-center gap-1 select-none">
-                                <CheckCircle2 size={10} />
-                                Strengths
-                              </span>
-                              <ul className="list-disc pl-4 space-y-1 text-[var(--text-secondary)]">
-                                {simulationResult.strengths.map((str, sIdx) => (
-                                  <li key={sIdx}>{str}</li>
-                                ))}
-                              </ul>
-                            </div>
+                        {/* Summary feedback (sm:col-span-8) */}
+                        <div className="sm:col-span-8 bg-black/25 border border-white/5 p-4 rounded-2xl flex flex-col justify-between text-left">
+                          <span className="text-[8px] font-extrabold text-cyan-400 uppercase tracking-widest font-mono">Performance feedback</span>
+                          <p className="text-xs text-slate-300 leading-relaxed mt-2 italic select-text">
+                            &ldquo;{simulationResult.summary}&rdquo;
+                          </p>
+                        </div>
+                      </div>
 
-                            <div className="p-3.5 bg-red-500/5 border border-red-500/10 rounded-xl flex flex-col gap-2 text-xs font-semibold">
-                              <span className="text-[9px] font-extrabold text-red-400 uppercase tracking-widest flex items-center gap-1 select-none">
-                                <XCircle size={10} />
-                                Areas to Improve
-                              </span>
-                              <ul className="list-disc pl-4 space-y-1 text-[var(--text-secondary)]">
-                                {simulationResult.weaknesses.map((wk, wIdx) => (
-                                  <li key={wIdx}>{wk}</li>
-                                ))}
-                              </ul>
-                            </div>
+                      {/* Strengths & Weaknesses checklists */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                        <div className="p-4 bg-emerald-500/[0.02] border border-emerald-500/10 rounded-2xl space-y-2">
+                          <span className="text-[8.5px] font-extrabold text-emerald-400 uppercase tracking-widest font-mono flex items-center gap-1"><CheckCircle2 size={11} /> Identified Strengths</span>
+                          <div className="space-y-1.5 pl-1.5 select-text">
+                            {simulationResult.strengths.map((str, idx) => (
+                              <div key={idx} className="text-xs text-slate-300 flex items-center gap-2">
+                                <ChevronRight size={10} className="text-emerald-400" />
+                                <span>{str}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-rose-500/[0.02] border border-rose-500/10 rounded-2xl space-y-2">
+                          <span className="text-[8.5px] font-extrabold text-rose-400 uppercase tracking-widest font-mono flex items-center gap-1"><XCircle size={11} /> Areas of Improvement</span>
+                          <div className="space-y-1.5 pl-1.5 select-text">
+                            {simulationResult.weaknesses.map((weak, idx) => (
+                              <div key={idx} className="text-xs text-slate-300 flex items-center gap-2">
+                                <ChevronRight size={10} className="text-rose-400" />
+                                <span>{weak}</span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-4 bg-black/25 border border-white/5 rounded-xl text-xs leading-relaxed text-[var(--text-secondary)] flex flex-col gap-1.5 mt-2 font-medium">
-                        <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider select-none">Evaluation Executive Summary</span>
-                        <p>{simulationResult.summary}</p>
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={() => setSimulatorStatus('idle')}
+                          className="px-5 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-black text-xs font-extrabold rounded-xl shadow-md transition-all active:scale-97 cursor-pointer"
+                        >
+                          Start New Simulation
+                        </button>
                       </div>
                     </div>
-                  )}
+                  ) : (
+                    // CALL INTERFACE (VIDEO CALL HUD WITH TRANSCRIPT CONSOLE)
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                      
+                      {/* Left: Video & Audio Panel feeds (col-span-5) */}
+                      <div className="lg:col-span-5 flex flex-col gap-4">
+                        {/* Recruiter Avatar feed */}
+                        <div className="h-[210px] bg-gradient-to-b from-[#0c0e16] to-[#161720] border border-[var(--border-glass-active)] rounded-2xl flex flex-col justify-between p-4 relative overflow-hidden group shadow-inner">
+                          <span className="absolute -top-12 -right-12 w-28 h-28 bg-[var(--accent-blue-glow)] rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform" />
+                          
+                          <div className="flex justify-between items-center select-none z-10">
+                            <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[8px] font-bold uppercase tracking-wider font-mono">
+                              INTERVIEWER FEED // ONLINE
+                            </span>
+                          </div>
 
+                          {/* Pulsing speech wave visualizer avatar */}
+                          <div className="flex flex-col items-center justify-center py-4 z-10">
+                            <div className="w-14 h-14 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-[var(--accent-blue)] relative shadow-[0_0_15px_var(--accent-blue-glow)]">
+                              <Cpu size={20} className="animate-pulse" />
+                            </div>
+                            <span className="text-[10px] font-bold text-white mt-3 uppercase tracking-wider">AI Recruiter Companion</span>
+                            <span className="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">TRANSCRIPT SYNCHRONIZED</span>
+                          </div>
+
+                          {/* Sound wave visualizer indicator lines */}
+                          <div className="flex items-center gap-1 justify-center z-10 select-none pb-1">
+                            {Array.from({ length: 12 }).map((_, i) => (
+                              <motion.span
+                                key={i}
+                                className="w-0.5 h-3 bg-[var(--accent-blue)] rounded"
+                                animate={{
+                                  height: [12, 4 + Math.random() * 20, 12],
+                                }}
+                                transition={{
+                                  duration: 0.5 + Math.random() * 0.5,
+                                  repeat: Infinity,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Candidate Video feed */}
+                        <div className="h-[140px] bg-black/45 border border-white/5 rounded-2xl flex flex-col justify-between p-3.5 relative overflow-hidden">
+                          <div className="flex justify-between items-center select-none z-10">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-wider font-mono">
+                              CANDIDATE FEED
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col items-center justify-center z-10">
+                            {isVideoOn ? (
+                              <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-300">
+                                <User size={16} />
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-[var(--text-muted)] font-bold">CAMERA DISABLED</div>
+                            )}
+                          </div>
+
+                          {/* Call actions bottom toggles */}
+                          <div className="flex gap-2 justify-center z-10 select-none">
+                            <button
+                              onClick={() => setIsVideoOn(!isVideoOn)}
+                              className={cn(
+                                "p-2 rounded-xl transition-all cursor-pointer border",
+                                isVideoOn ? "bg-white/5 text-white border-white/10 hover:bg-white/10" : "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/15"
+                              )}
+                            >
+                              {isVideoOn ? <Video size={13} /> : <VideoOff size={13} />}
+                            </button>
+                            <button
+                              onClick={() => setIsMicOn(!isMicOn)}
+                              className={cn(
+                                "p-2 rounded-xl transition-all cursor-pointer border",
+                                isMicOn ? "bg-white/5 text-white border-white/10 hover:bg-white/10" : "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/15"
+                              )}
+                            >
+                              {isMicOn ? <Mic size={13} /> : <MicOff size={13} />}
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Right: Live Transcript dialogue (col-span-7) */}
+                      <div className="lg:col-span-7 flex flex-col justify-between gap-3 h-[366px]">
+                        
+                        <div className="flex-1 border border-white/5 bg-[#07080b]/90 rounded-2xl p-4 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar select-text">
+                          <div className="flex justify-between items-center border-b border-white/5 pb-2 select-none">
+                            <span className="text-[8.5px] font-extrabold uppercase text-[var(--text-muted)] tracking-wider">Live Transcript Feed</span>
+                            <span className="text-[8px] text-[var(--text-muted)] font-mono font-bold tracking-widest uppercase">CALL_ACTIVE</span>
+                          </div>
+
+                          <div className="flex-1 flex flex-col gap-3.5 pr-0.5 overflow-y-auto custom-scrollbar">
+                            {dialogHistory.map((msg, idx) => (
+                              <div
+                                key={idx}
+                                className={cn(
+                                  "flex gap-3 max-w-[85%] rounded-2xl p-3 border",
+                                  msg.role === 'interviewer'
+                                    ? "bg-white/[0.01] border-white/5 text-left self-start"
+                                    : "bg-[var(--accent-blue-glow)] text-white border-[var(--accent-blue)]/10 text-left self-end"
+                                )}
+                              >
+                                <div className="flex flex-col gap-1">
+                                  <span className={cn(
+                                    "text-[8px] font-extrabold uppercase font-mono tracking-wider",
+                                    msg.role === 'interviewer' ? "text-[var(--accent-blue)]" : "text-[var(--accent-purple)]"
+                                  )}>
+                                    {msg.role === 'interviewer' ? 'Interviewer' : 'Candidate'}
+                                  </span>
+                                  <p className="text-[11px] leading-relaxed">{msg.content}</p>
+                                  
+                                  {/* Inline interviewer feedback if present */}
+                                  {msg.role === 'interviewer' && msg.feedback && (
+                                    <div className="mt-2 border-t border-white/5 pt-1.5 text-[9.5px] text-[var(--text-muted)] leading-relaxed flex flex-col gap-0.5 select-none font-medium">
+                                      <span className="text-cyan-400 font-extrabold text-[8px] uppercase font-mono">Real-time coaching feed</span>
+                                      <p>{msg.feedback}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            <div ref={transcriptEndRef} />
+                          </div>
+                        </div>
+
+                        {/* Transcript candidate input form */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={candidateResponse}
+                            onChange={(e) => setCandidateResponse(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && !isPending && handleSendResponse()}
+                            placeholder={isMicOn ? "Type your response or press enter..." : "Enable Microphone to respond..."}
+                            disabled={isPending || !isMicOn}
+                            className="w-full bg-[#16171E] border border-[var(--border-glass)] rounded-xl px-4 py-2.5 text-xs text-white placeholder-[var(--text-muted)] outline-none focus:border-cyan-500 focus:ring-0"
+                          />
+                          <button
+                            onClick={handleSendResponse}
+                            disabled={isPending || !isMicOn || !candidateResponse.trim()}
+                            className="p-2.5 bg-gradient-to-r from-cyan-500 to-indigo-600 disabled:from-white/5 disabled:to-white/5 text-black disabled:text-white/20 rounded-xl transition-all shadow-md active:scale-97 cursor-pointer"
+                          >
+                            {isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                          </button>
+                          
+                          <button
+                            onClick={handleFinishInterview}
+                            className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/15 text-rose-400 border border-rose-500/20 text-xs font-bold rounded-xl active:scale-97 transition-all cursor-pointer shrink-0"
+                          >
+                            Finish Call
+                          </button>
+                        </div>
+
+                      </div>
+
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1495,6 +1394,7 @@ export default function PlacementPage() {
         </div>
 
       </div>
+
     </div>
   )
 }
