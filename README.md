@@ -83,28 +83,6 @@ Translates student interests and target roles into tailored software project pro
 
 ## 🏗️ System Architecture & Data Flow
 
-```mermaid
-graph TD
-    Client[Next.js Client] -->|1. Request / Upload File| API[API Route Handler]
-    API -->|2. Save File| Storage[Supabase Storage]
-    
-    subgraph AI Client Layer (AI Gateway)
-        API -->|3. Route Prompt / Multimodal payload| Gateway[Gemini client.ts]
-        Gateway -->|Verify Rate Limits| LimitsDB[(user_api_limits)]
-        Gateway -->|Sanitize prompt injection hijack phrases| Sanitizer[Input Sanitizer]
-        Gateway -->|Fetch / Re-try with backoff| Gemini[Gemini API]
-    end
-
-    subgraph Database Layer
-        API -->|4. Chunk hashing lookup| DB[(Supabase PostgreSQL)]
-        DB -->|5. Match embedding vector cache| API
-        API -->|6. Batch Insert Chunks & Graph Edges| DB
-        DB -.->|7. RLS Gated pgvector HNSW similarity query| API
-    end
-    
-    API -->|8. Structured JSON Response| Client
-```
-
 ![System Architecture & Data Flow](screenshots/system-architecture.png)
 
 ---
